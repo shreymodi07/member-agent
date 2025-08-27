@@ -4,11 +4,10 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { CodeReviewAgent } from '../agents/code-review';
+import { ConfigManager } from '../config/manager';
 
 interface CodeReviewOptions extends BaseCommandOptions {
   file?: string;
-  pr?: string;
-  severity?: 'low' | 'medium' | 'high' | 'critical';
   format?: 'console' | 'json' | 'markdown';
   output?: string;
   changes?: boolean;
@@ -16,37 +15,36 @@ interface CodeReviewOptions extends BaseCommandOptions {
 
 export class CodeReviewCommand extends BaseCommand {
   constructor() {
-    super('review', 'Perform AI-powered code review');
+    super('review', 'AI-powered code review');
   }
 
   protected setupOptions(): void {
     super.setupOptions();
     this.command
       .option('-f, --file <path>', 'File or directory to review')
-      .option('--pr <number>', 'Pull request number to review')
-      .option('-s, --severity <level>', 'Minimum severity level (low|medium|high|critical)', 'medium')
       .option('--format <format>', 'Output format (console|json|markdown)', 'console')
       .option('-o, --output <path>', 'Output file path')
-      .option('--changes', 'Automatically review git changes (default behavior when no file specified)');
+      .option('--changes', 'Review git changes automatically');
   }
 
   protected setupAction(): void {
     this.command.action(async (options: CodeReviewOptions) => {
       try {
-        console.log(chalk.blue('🔍 Teladoc Code Review Agent'));
+        console.log(chalk.blue('🔍 Teladoc Code Review'));
 
         // Smart detection: check for git changes first
-        if (!options.file && !options.pr) {
-          const agent = new CodeReviewAgent();
+        if (!options.file) {
+          const configManager = new ConfigManager();
+          const agentConfig = await configManager.getAgentConfig();
+          const agent = new CodeReviewAgent(agentConfig);
           const changedFiles = await agent.detectChangedFiles();
           
           if (changedFiles.length > 0) {
-            console.log(chalk.green(`✨ Detected ${changedFiles.length} changed files:`));
+            console.log(chalk.green(`✨ Found ${changedFiles.length} changed files:`));
             changedFiles.forEach((file: string) => console.log(chalk.gray(`  • ${file}`)));
             
-            // If --changes flag is used, automatically review changes
             if (options.changes) {
-              console.log(chalk.blue('🚀 Reviewing changed files automatically...'));
+              console.log(chalk.blue('🚀 Reviewing changes automatically...'));
               options.file = '.';
             } else {
               const { useChanges } = await inquirer.prompt([
@@ -59,7 +57,7 @@ export class CodeReviewCommand extends BaseCommand {
               ]);
 
               if (useChanges) {
-                options.file = '.'; // Review all changes
+                options.file = '.';
               }
             }
           } else if (options.changes) {
@@ -68,49 +66,26 @@ export class CodeReviewCommand extends BaseCommand {
           }
           
           if (!options.file) {
-            const { reviewType } = await inquirer.prompt([
+            const { file } = await inquirer.prompt([
               {
-                type: 'list',
-                name: 'reviewType',
-                message: 'What would you like to review?',
-                choices: [
-                  { name: 'Specific file/directory', value: 'file' },
-                  { name: 'Pull request', value: 'pr' }
-                ]
+                type: 'input',
+                name: 'file',
+                message: 'Enter file or directory to review:',
+                validate: (input: string) => input.length > 0 || 'Path is required'
               }
             ]);
-
-            if (reviewType === 'file') {
-              const { file } = await inquirer.prompt([
-                {
-                  type: 'input',
-                  name: 'file',
-                  message: 'Enter the file or directory path:',
-                  validate: (input: string) => input.length > 0 || 'Path is required'
-                }
-              ]);
-              options.file = file;
-            } else {
-              const { pr } = await inquirer.prompt([
-                {
-                  type: 'input',
-                  name: 'pr',
-                  message: 'Enter the pull request number:',
-                  validate: (input: string) => /^\d+$/.test(input) || 'Please enter a valid PR number'
-                }
-              ]);
-              options.pr = pr;
-            }
+            options.file = file;
           }
         }
 
-        const spinner = ora('Analyzing code and generating review...').start();
+        const spinner = ora('Analyzing code...').start();
 
-        const agent = new CodeReviewAgent();
+        const configManager = new ConfigManager();
+        const agentConfig = await configManager.getAgentConfig();
+        const agent = new CodeReviewAgent(agentConfig);
         const result = await agent.reviewCode({
-          filePath: options.file,
-          prNumber: options.pr,
-          severity: options.severity || 'medium',
+          filePath: options.file!,
+          severity: 'medium',
           format: options.format || 'console',
           outputPath: options.output
         });

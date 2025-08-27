@@ -2,9 +2,8 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { SpecWriterCommand } from './commands/spec-writer';
 import { CodeReviewCommand } from './commands/code-review';
-import { SecurityComplianceCommand } from './commands/security-compliance';
+import { SecurityCommand } from './commands/security';
 import { ConfigCommand } from './commands/config';
 import { version } from '../package.json';
 
@@ -12,13 +11,12 @@ const program = new Command();
 
 program
   .name('teladoc-agent')
-  .description('AI-powered development agents for Teladoc member team')
+  .description('AI-powered code review and security scanning for Teladoc')
   .version(version);
 
 // Add commands
-program.addCommand(new SpecWriterCommand().getCommand());
 program.addCommand(new CodeReviewCommand().getCommand());
-program.addCommand(new SecurityComplianceCommand().getCommand());
+program.addCommand(new SecurityCommand().getCommand());
 program.addCommand(new ConfigCommand().getCommand());
 
 // Global options

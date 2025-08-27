@@ -9,6 +9,7 @@ const chalk_1 = __importDefault(require("chalk"));
 const inquirer_1 = __importDefault(require("inquirer"));
 const ora_1 = __importDefault(require("ora"));
 const spec_writer_1 = require("../agents/spec-writer");
+const manager_1 = require("../config/manager");
 class SpecWriterCommand extends base_1.BaseCommand {
     constructor() {
         super('spec', 'Generate technical specifications using AI');
@@ -52,7 +53,9 @@ class SpecWriterCommand extends base_1.BaseCommand {
                     options.type = type;
                 }
                 const spinner = (0, ora_1.default)('Analyzing code and generating specification...').start();
-                const agent = new spec_writer_1.SpecWriterAgent();
+                const configManager = new manager_1.ConfigManager();
+                const agentConfig = await configManager.getAgentConfig();
+                const agent = new spec_writer_1.SpecWriterAgent(agentConfig);
                 const result = await agent.generateSpec({
                     filePath: options.file,
                     type: options.type,

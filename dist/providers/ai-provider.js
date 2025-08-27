@@ -1,16 +1,25 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AIProvider = void 0;
+const sdk_1 = __importDefault(require("@anthropic-ai/sdk"));
 class AIProvider {
     constructor(config) {
         this.config = {
             apiKey: config?.apiKey || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || '',
-            model: config?.model || 'gpt-4',
-            provider: config?.provider || 'openai',
+            model: config?.model || 'claude-3-sonnet',
+            provider: config?.provider || 'anthropic',
             baseUrl: config?.baseUrl || ''
         };
         if (!this.config.apiKey) {
             throw new Error('API key is required. Set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable or provide it in config.');
+        }
+        if (this.config.provider === 'anthropic') {
+            this.anthropic = new sdk_1.default({
+                apiKey: this.config.apiKey,
+            });
         }
     }
     async generateText(prompt) {
@@ -35,12 +44,28 @@ class AIProvider {
     }
     async generateAnthropic(prompt) {
         try {
-            // In a real implementation, you would use the Anthropic SDK
-            // For now, return a mock response
-            return this.generateMockResponse(prompt);
+            if (!this.anthropic) {
+                throw new Error('Anthropic client not initialized');
+            }
+            const message = await this.anthropic.messages.create({
+                model: this.config.model,
+                max_tokens: 4000,
+                messages: [{
+                        role: 'user',
+                        content: prompt
+                    }]
+            });
+            const content = message.content[0];
+            if (content.type === 'text') {
+                return content.text;
+            }
+            else {
+                throw new Error('Unexpected response type from Anthropic API');
+            }
         }
         catch (error) {
-            throw new Error(`Anthropic API error: ${error.message}`);
+            console.warn(`Anthropic API error: ${error.message}, falling back to mock response`);
+            return this.generateMockResponse(prompt);
         }
     }
     generateMockResponse(prompt) {

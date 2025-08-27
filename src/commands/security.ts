@@ -4,54 +4,46 @@ import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { SecurityComplianceAgent } from '../agents/security-compliance';
+import { ConfigManager } from '../config/manager';
 
 interface SecurityOptions extends BaseCommandOptions {
   file?: string;
-  scan?: 'vulnerabilities' | 'secrets' | 'compliance' | 'all';
-  standard?: 'hipaa' | 'sox' | 'pci' | 'gdpr';
-  format?: 'console' | 'json' | 'sarif';
+  format?: 'console' | 'json';
   output?: string;
 }
 
-export class SecurityComplianceCommand extends BaseCommand {
+export class SecurityCommand extends BaseCommand {
   constructor() {
-    super('security', 'Perform security and compliance scanning');
+    super('security', 'Find security vulnerabilities and compliance issues');
   }
 
   protected setupOptions(): void {
     super.setupOptions();
     this.command
-      .option('-f, --file <path>', 'File or directory to scan')
-      .option('--scan <type>', 'Type of scan (vulnerabilities|secrets|compliance|all)', 'all')
-      .option('--standard <standard>', 'Compliance standard (hipaa|sox|pci|gdpr)', 'hipaa')
-      .option('--format <format>', 'Output format (console|json|sarif)', 'console')
+      .option('-f, --file <path>', 'File or directory to scan (default: current directory)')
+      .option('--format <format>', 'Output format (console|json)', 'console')
       .option('-o, --output <path>', 'Output file path');
   }
 
   protected setupAction(): void {
     this.command.action(async (options: SecurityOptions) => {
       try {
-        console.log(chalk.blue('🔒 Teladoc Security & Compliance Agent'));
+        console.log(chalk.blue('🔒 Teladoc Security Scanner'));
 
+        // Default to current directory if no file specified
         if (!options.file) {
-          const { file } = await inquirer.prompt([
-            {
-              type: 'input',
-              name: 'file',
-              message: 'Enter the file or directory path to scan:',
-              validate: (input: string) => input.length > 0 || 'Path is required'
-            }
-          ]);
-          options.file = file;
+          options.file = '.';
         }
 
-        const spinner = ora('Scanning for security vulnerabilities and compliance issues...').start();
+        const spinner = ora('Scanning for security vulnerabilities...').start();
 
-        const agent = new SecurityComplianceAgent();
+        const configManager = new ConfigManager();
+        const agentConfig = await configManager.getAgentConfig();
+        const agent = new SecurityComplianceAgent(agentConfig);
         const result = await agent.scanSecurity({
           filePath: options.file!,
-          scanType: options.scan || 'all',
-          standard: options.standard || 'hipaa',
+          scanType: 'all',
+          standard: 'hipaa',
           format: options.format || 'console',
           outputPath: options.output
         });

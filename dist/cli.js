@@ -6,20 +6,18 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const commander_1 = require("commander");
 const chalk_1 = __importDefault(require("chalk"));
-const spec_writer_1 = require("./commands/spec-writer");
 const code_review_1 = require("./commands/code-review");
-const security_compliance_1 = require("./commands/security-compliance");
+const security_1 = require("./commands/security");
 const config_1 = require("./commands/config");
 const package_json_1 = require("../package.json");
 const program = new commander_1.Command();
 program
     .name('teladoc-agent')
-    .description('AI-powered development agents for Teladoc member team')
+    .description('AI-powered code review and security scanning for Teladoc')
     .version(package_json_1.version);
 // Add commands
-program.addCommand(new spec_writer_1.SpecWriterCommand().getCommand());
 program.addCommand(new code_review_1.CodeReviewCommand().getCommand());
-program.addCommand(new security_compliance_1.SecurityComplianceCommand().getCommand());
+program.addCommand(new security_1.SecurityCommand().getCommand());
 program.addCommand(new config_1.ConfigCommand().getCommand());
 // Global options
 program

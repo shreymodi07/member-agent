@@ -41,5 +41,9 @@ export declare class CodeReviewAgent {
     private parseReviewIssues;
     private formatReview;
     private getDefaultOutputPath;
+    detectChangedFiles(): Promise<string[]>;
+    private getGitFiles;
+    readChangedFilesContent(files: string[]): Promise<string>;
+    private getFileDiff;
 }
 //# sourceMappingURL=code-review.d.ts.map

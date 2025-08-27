@@ -9,64 +9,73 @@ const chalk_1 = __importDefault(require("chalk"));
 const inquirer_1 = __importDefault(require("inquirer"));
 const ora_1 = __importDefault(require("ora"));
 const code_review_1 = require("../agents/code-review");
+const manager_1 = require("../config/manager");
 class CodeReviewCommand extends base_1.BaseCommand {
     constructor() {
-        super('review', 'Perform AI-powered code review');
+        super('review', 'AI-powered code review');
     }
     setupOptions() {
         super.setupOptions();
         this.command
             .option('-f, --file <path>', 'File or directory to review')
-            .option('--pr <number>', 'Pull request number to review')
-            .option('-s, --severity <level>', 'Minimum severity level (low|medium|high|critical)', 'medium')
             .option('--format <format>', 'Output format (console|json|markdown)', 'console')
-            .option('-o, --output <path>', 'Output file path');
+            .option('-o, --output <path>', 'Output file path')
+            .option('--changes', 'Review git changes automatically');
     }
     setupAction() {
         this.command.action(async (options) => {
             try {
-                console.log(chalk_1.default.blue('🔍 Teladoc Code Review Agent'));
-                if (!options.file && !options.pr) {
-                    const { reviewType } = await inquirer_1.default.prompt([
-                        {
-                            type: 'list',
-                            name: 'reviewType',
-                            message: 'What would you like to review?',
-                            choices: [
-                                { name: 'Local files/directory', value: 'file' },
-                                { name: 'Pull request', value: 'pr' }
-                            ]
+                console.log(chalk_1.default.blue('🔍 Teladoc Code Review'));
+                // Smart detection: check for git changes first
+                if (!options.file) {
+                    const configManager = new manager_1.ConfigManager();
+                    const agentConfig = await configManager.getAgentConfig();
+                    const agent = new code_review_1.CodeReviewAgent(agentConfig);
+                    const changedFiles = await agent.detectChangedFiles();
+                    if (changedFiles.length > 0) {
+                        console.log(chalk_1.default.green(`✨ Found ${changedFiles.length} changed files:`));
+                        changedFiles.forEach((file) => console.log(chalk_1.default.gray(`  • ${file}`)));
+                        if (options.changes) {
+                            console.log(chalk_1.default.blue('🚀 Reviewing changes automatically...'));
+                            options.file = '.';
                         }
-                    ]);
-                    if (reviewType === 'file') {
+                        else {
+                            const { useChanges } = await inquirer_1.default.prompt([
+                                {
+                                    type: 'confirm',
+                                    name: 'useChanges',
+                                    message: 'Review these changed files?',
+                                    default: true
+                                }
+                            ]);
+                            if (useChanges) {
+                                options.file = '.';
+                            }
+                        }
+                    }
+                    else if (options.changes) {
+                        console.log(chalk_1.default.yellow('⚠️  No git changes detected.'));
+                        return;
+                    }
+                    if (!options.file) {
                         const { file } = await inquirer_1.default.prompt([
                             {
                                 type: 'input',
                                 name: 'file',
-                                message: 'Enter the file or directory path:',
+                                message: 'Enter file or directory to review:',
                                 validate: (input) => input.length > 0 || 'Path is required'
                             }
                         ]);
                         options.file = file;
                     }
-                    else {
-                        const { pr } = await inquirer_1.default.prompt([
-                            {
-                                type: 'input',
-                                name: 'pr',
-                                message: 'Enter the pull request number:',
-                                validate: (input) => /^\d+$/.test(input) || 'Please enter a valid PR number'
-                            }
-                        ]);
-                        options.pr = pr;
-                    }
                 }
-                const spinner = (0, ora_1.default)('Analyzing code and generating review...').start();
-                const agent = new code_review_1.CodeReviewAgent();
+                const spinner = (0, ora_1.default)('Analyzing code...').start();
+                const configManager = new manager_1.ConfigManager();
+                const agentConfig = await configManager.getAgentConfig();
+                const agent = new code_review_1.CodeReviewAgent(agentConfig);
                 const result = await agent.reviewCode({
                     filePath: options.file,
-                    prNumber: options.pr,
-                    severity: options.severity || 'medium',
+                    severity: 'medium',
                     format: options.format || 'console',
                     outputPath: options.output
                 });

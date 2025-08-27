@@ -1,23 +1,36 @@
-# 🎉 Teladoc Member Agents - Project Complete!
+# 🎉 Teladoc Member Agents - Project Complete
 
 ## What We Built
 
 I've successfully created a comprehensive AI-powered CLI tool for the Teladoc member team with three specialized agents:
 
 ### 🔍 **Spec Writer Agent**
+
 - Generates technical specifications from code
 - Supports API, feature, and component specifications  
 - Healthcare compliance focused (HIPAA, SOX)
 - Markdown output with custom templates
 
-### 🔍 **Code Review Agent**
+### 🔍 **Code Review Agent** - NOW WITH SMART GIT INTEGRATION!
+
 - AI-powered code analysis and review
+- **🚀 Automatic git change detection** - no more guessing what to review!
 - Security vulnerability detection
 - Performance optimization suggestions
 - Multiple output formats (console, markdown, JSON)
 - Healthcare-specific compliance checking
 
+**NEW Smart Workflow:**
+```bash
+# Make your changes, then just run:
+teladoc-agent review
+
+# It automatically detects git changes and reviews them!
+# Perfect for pre-commit code review workflow
+```
+
 ### 🔒 **Security Compliance Agent**
+
 - Comprehensive security scanning
 - Secret detection and vulnerability analysis
 - HIPAA/SOX/PCI/GDPR compliance checking

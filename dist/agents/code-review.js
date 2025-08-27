@@ -7,6 +7,7 @@ exports.CodeReviewAgent = void 0;
 const ai_provider_1 = require("../providers/ai-provider");
 const fs_extra_1 = __importDefault(require("fs-extra"));
 const path_1 = __importDefault(require("path"));
+const child_process_1 = require("child_process");
 class CodeReviewAgent {
     constructor(config) {
         this.aiProvider = new ai_provider_1.AIProvider(config);
@@ -15,8 +16,19 @@ class CodeReviewAgent {
         let codeContent;
         let context;
         if (options.filePath) {
-            codeContent = await this.readCodeContent(options.filePath);
-            context = await this.analyzeProjectContext(options.filePath);
+            // If filePath is '.', review changed files
+            if (options.filePath === '.') {
+                const changedFiles = await this.detectChangedFiles();
+                if (changedFiles.length === 0) {
+                    throw new Error('No changed files detected. Make sure you have git changes to review.');
+                }
+                codeContent = await this.readChangedFilesContent(changedFiles);
+                context = await this.analyzeProjectContext(process.cwd());
+            }
+            else {
+                codeContent = await this.readCodeContent(options.filePath);
+                context = await this.analyzeProjectContext(options.filePath);
+            }
         }
         else if (options.prNumber) {
             // In a real implementation, this would fetch PR data from Git/GitHub
@@ -144,6 +156,7 @@ class CodeReviewAgent {
         return 'npm';
     }
     async generateCodeReview(codeContent, context, severity) {
+        const isGitChanges = codeContent.includes('// Git Changes:');
         const prompt = `
 You are a senior software engineer at Teladoc Health conducting a comprehensive code review. 
 Focus on healthcare-specific requirements and best practices.
@@ -152,13 +165,19 @@ Project Context:
 - Language: ${context.language || 'Unknown'}
 - Framework: ${context.framework || 'Unknown'}
 - Minimum Severity: ${severity}
+- Review Type: ${isGitChanges ? 'Git Changes Analysis' : 'Full Code Review'}
 
-Code to review:
+${isGitChanges ? 'Code changes to review (with git diffs):' : 'Code to review:'}
 \`\`\`
 ${codeContent}
 \`\`\`
 
-Please provide a thorough code review covering:
+${isGitChanges ? `
+**FOCUS ON CHANGES**: Pay special attention to the git diff sections showing what was added (+) and removed (-). 
+Review the context around changes and how they impact the overall codebase.
+
+Please provide a change-focused code review covering:
+` : 'Please provide a thorough code review covering:'}
 
 1. **Security Issues**:
    - Authentication and authorization
@@ -191,6 +210,14 @@ Please provide a thorough code review covering:
    - DRY principle adherence
    - Dependency management
 
+${isGitChanges ? `
+6. **Change Impact Analysis**:
+   - Breaking changes introduced
+   - Backward compatibility concerns
+   - Impact on existing features
+   - Migration considerations
+` : ''}
+
 For each issue found, provide:
 - File and line number
 - Severity level (critical, high, medium, low)
@@ -199,6 +226,7 @@ For each issue found, provide:
 - Specific recommendation for improvement
 - Code example if applicable
 
+${isGitChanges ? 'Prioritize issues in the changed code sections.' : ''}
 Format the response as structured markdown with clear sections.
 Only report issues at or above the requested severity level: ${severity}.
 `;
@@ -287,6 +315,61 @@ ${issues.map(issue => `
         const timestamp = new Date().toISOString().split('T')[0];
         const ext = format === 'json' ? 'json' : 'md';
         return path_1.default.join(process.cwd(), 'reviews', `${baseName}-review-${timestamp}.${ext}`);
+    }
+    async detectChangedFiles() {
+        try {
+            // Check if we're in a git repository
+            (0, child_process_1.execSync)('git rev-parse --is-inside-work-tree', { stdio: 'ignore' });
+            // Get staged and unstaged changes
+            const stagedFiles = this.getGitFiles('--cached --name-only');
+            const unstagedFiles = this.getGitFiles('--name-only');
+            // Combine and deduplicate
+            const allChangedFiles = [...new Set([...stagedFiles, ...unstagedFiles])];
+            // Filter for code files only
+            return allChangedFiles.filter(file => this.isCodeFile(path_1.default.basename(file)));
+        }
+        catch (error) {
+            // Not a git repository or no git available
+            return [];
+        }
+    }
+    getGitFiles(args) {
+        try {
+            const output = (0, child_process_1.execSync)(`git diff ${args}`, { encoding: 'utf-8' });
+            return output.trim().split('\n').filter(line => line.length > 0);
+        }
+        catch (error) {
+            return [];
+        }
+    }
+    async readChangedFilesContent(files) {
+        const contents = await Promise.all(files.map(async (file) => {
+            try {
+                const fullPath = path_1.default.resolve(file);
+                const content = await fs_extra_1.default.readFile(fullPath, 'utf-8');
+                const gitDiff = await this.getFileDiff(file);
+                return `// File: ${file}
+// Git Changes:
+${gitDiff}
+
+// Full Content:
+${content}
+`;
+            }
+            catch (error) {
+                return `// File: ${file} (Error reading: ${error.message})`;
+            }
+        }));
+        return contents.join('\n\n');
+    }
+    async getFileDiff(file) {
+        try {
+            const diff = (0, child_process_1.execSync)(`git diff HEAD -- "${file}"`, { encoding: 'utf-8' });
+            return diff || 'No diff available';
+        }
+        catch (error) {
+            return 'Error getting diff';
+        }
     }
 }
 exports.CodeReviewAgent = CodeReviewAgent;

@@ -1,19 +1,28 @@
-// Example JavaScript file for testing
+// Example JavaScript file for testing - UPDATED with security fixes
 const express = require('express');
 const app = express();
 
-// Potential security issue: no input validation
+// Added input validation middleware
+app.use(express.json({ limit: '10mb' }));
+
+// Improved security: added input validation
 app.post('/patient-data', (req, res) => {
   const { patientId, data } = req.body;
   
-  // HIPAA violation: logging PHI without encryption
-  console.log(`Processing patient data for ${patientId}: ${JSON.stringify(data)}`);
+  // Input validation added
+  if (!patientId || typeof patientId !== 'string') {
+    return res.status(400).json({ error: 'Invalid patient ID' });
+  }
   
-  // SQL injection vulnerability
-  const query = `SELECT * FROM patients WHERE id = '${patientId}'`;
+  // Fixed: PHI data no longer logged in plain text
+  console.log(`Processing patient data for patient: ${patientId.substring(0, 3)}***`);
   
-  // Hardcoded API key - security issue
-  const apiKey = 'sk-1234567890abcdef';
+  // Fixed: Using parameterized queries (simulated)
+  const query = 'SELECT * FROM patients WHERE id = ?';
+  const params = [patientId];
+  
+  // Fixed: API key moved to environment variable
+  const apiKey = process.env.API_KEY;
   
   res.json({ success: true });
 });
