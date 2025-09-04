@@ -8,12 +8,24 @@ const sdk_1 = __importDefault(require("@anthropic-ai/sdk"));
 const openai_1 = __importDefault(require("openai"));
 class AIProvider {
     constructor(config) {
+        const provider = config?.provider || 'openai';
+        let defaultModel = 'gpt-4';
+        if (provider === 'anthropic') {
+            defaultModel = 'claude-3-sonnet';
+        }
         this.config = {
             apiKey: config?.apiKey || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || '',
-            model: config?.model || 'claude-3-sonnet',
-            provider: config?.provider || 'anthropic',
+            model: config?.model || defaultModel,
+            provider: provider,
             baseUrl: config?.baseUrl || ''
         };
+        // Correct model if it doesn't match the provider
+        if ((this.config.provider === 'openai' || this.config.provider === 'gpt-4') && this.config.model.startsWith('claude')) {
+            this.config.model = 'gpt-4';
+        }
+        else if (this.config.provider === 'anthropic' && this.config.model.startsWith('gpt')) {
+            this.config.model = 'claude-3-sonnet';
+        }
         if (!this.config.apiKey) {
             throw new Error('API key is required. Set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable or provide it in config.');
         }
@@ -22,7 +34,7 @@ class AIProvider {
                 apiKey: this.config.apiKey,
             });
         }
-        else if (this.config.provider === 'openai') {
+        else if (this.config.provider === 'openai' || this.config.provider === 'gpt-4') {
             this.openai = new openai_1.default({
                 apiKey: this.config.apiKey,
                 baseURL: this.config.baseUrl || undefined,
@@ -30,8 +42,10 @@ class AIProvider {
         }
     }
     async generateText(prompt) {
+        // 'gpt-4' is treated as OpenAI provider for convenience.
         switch (this.config.provider) {
             case 'openai':
+            case 'gpt-4':
                 return await this.generateOpenAI(prompt);
             case 'anthropic':
                 return await this.generateAnthropic(prompt);

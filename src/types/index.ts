@@ -6,7 +6,7 @@ export interface BaseCommandOptions {
 export interface AgentConfig {
   apiKey?: string;
   model?: string;
-  provider?: 'openai' | 'anthropic';
+  provider?: 'openai' | 'anthropic' | 'gpt-4';
   baseUrl?: string;
 }
 
