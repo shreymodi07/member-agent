@@ -3,16 +3,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SecurityComplianceCommand = void 0;
+exports.SecurityCommand = void 0;
 const base_1 = require("./base");
 const chalk_1 = __importDefault(require("chalk"));
 const inquirer_1 = __importDefault(require("inquirer"));
 const ora_1 = __importDefault(require("ora"));
 const security_compliance_1 = require("../agents/security-compliance");
 const manager_1 = require("../config/manager");
-class SecurityComplianceCommand extends base_1.BaseCommand {
+class SecurityCommand extends base_1.BaseCommand {
     constructor() {
-        super('security', 'Perform security and compliance scanning');
+        super('security', 'Find security vulnerabilities and compliance issues');
     }
     setupOptions() {
         super.setupOptions();
@@ -78,5 +78,5 @@ class SecurityComplianceCommand extends base_1.BaseCommand {
         });
     }
 }
-exports.SecurityComplianceCommand = SecurityComplianceCommand;
+exports.SecurityCommand = SecurityCommand;
 //# sourceMappingURL=security-compliance.js.map

@@ -1,5 +1,5 @@
 import { BaseCommand } from './base';
-export declare class SecurityComplianceCommand extends BaseCommand {
+export declare class SecurityCommand extends BaseCommand {
     constructor();
     protected setupOptions(): void;
     protected setupAction(): void;

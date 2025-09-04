@@ -9,6 +9,7 @@ const chalk_1 = __importDefault(require("chalk"));
 const code_review_1 = require("./commands/code-review");
 const security_1 = require("./commands/security");
 const config_1 = require("./commands/config");
+const spec_coverage_1 = require("./commands/spec-coverage");
 const package_json_1 = require("../package.json");
 const program = new commander_1.Command();
 program
@@ -19,6 +20,7 @@ program
 program.addCommand(new code_review_1.CodeReviewCommand().getCommand());
 program.addCommand(new security_1.SecurityCommand().getCommand());
 program.addCommand(new config_1.ConfigCommand().getCommand());
+program.addCommand(new spec_coverage_1.SpecCoverageCommand().getCommand());
 // Global options
 program
     .option('-v, --verbose', 'Enable verbose output')

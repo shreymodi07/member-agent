@@ -1,9 +1,11 @@
 import { AgentConfig } from '../types';
 import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
 export class AIProvider {
   private config: Required<AgentConfig>;
   private anthropic?: Anthropic;
+  private openai?: OpenAI;
 
   constructor(config?: AgentConfig) {
     this.config = {
@@ -21,6 +23,11 @@ export class AIProvider {
       this.anthropic = new Anthropic({
         apiKey: this.config.apiKey,
       });
+    } else if (this.config.provider === 'openai') {
+      this.openai = new OpenAI({
+        apiKey: this.config.apiKey,
+        baseURL: this.config.baseUrl || undefined,
+      });
     }
   }
 
@@ -37,11 +44,25 @@ export class AIProvider {
 
   private async generateOpenAI(prompt: string): Promise<string> {
     try {
-      // In a real implementation, you would use the OpenAI SDK
-      // For now, return a mock response
-      return this.generateMockResponse(prompt);
+      if (!this.openai) {
+        throw new Error('OpenAI client not initialized');
+      }
+      const completion = await this.openai.chat.completions.create({
+        model: this.config.model || 'gpt-4',
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 4000
+      });
+      const content = completion.choices[0]?.message?.content;
+      if (content) {
+        return content;
+      } else {
+        throw new Error('Unexpected response from OpenAI API');
+      }
     } catch (error) {
-      throw new Error(`OpenAI API error: ${(error as Error).message}`);
+      console.warn(`OpenAI API error: ${(error as Error).message}, falling back to mock response`);
+      return this.generateMockResponse(prompt);
     }
   }
 

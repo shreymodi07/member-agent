@@ -5,6 +5,7 @@ import chalk from 'chalk';
 import { CodeReviewCommand } from './commands/code-review';
 import { SecurityCommand } from './commands/security';
 import { ConfigCommand } from './commands/config';
+import { SpecCoverageCommand } from './commands/spec-coverage';
 import { version } from '../package.json';
 
 const program = new Command();
@@ -18,6 +19,7 @@ program
 program.addCommand(new CodeReviewCommand().getCommand());
 program.addCommand(new SecurityCommand().getCommand());
 program.addCommand(new ConfigCommand().getCommand());
+program.addCommand(new SpecCoverageCommand().getCommand());
 
 // Global options
 program

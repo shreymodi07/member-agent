@@ -5,17 +5,54 @@ AI-powered code review and security scanning for Teladoc development teams.
 ## Features
 
 🔍 **Smart Code Review** - Automatically analyzes your git changes
+
 - Security vulnerability detection
 - HIPAA compliance checking
 - Best practices enforcement
 - Healthcare-focused analysis
 
 🔒 **Security Scanner** - Find vulnerabilities and compliance issues
+
 - HIPAA/SOX compliance validation
 - Security vulnerability detection
 - Industry-standard reporting
 
+📋 **Spec Coverage Analyzer** - Analyze test coverage and suggest missing scenarios
+
+- Function parameter combination analysis
+- Missing test scenario detection
+- Coverage gap identification
+- Test template generation
+
 ## Installation
+
+### Option 1: From Source (Recommended for Development)
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/member-agent.git
+cd member-agent
+
+# Quick install script
+./install.sh
+```
+
+**Manual installation:**
+
+```bash
+# Clone and navigate
+git clone https://github.com/your-username/member-agent.git
+cd member-agent
+
+# Install dependencies and build
+npm install
+npm run build
+
+# Install globally
+npm install -g .
+```
+
+### Option 2: From npm (Coming Soon)
 
 ```bash
 npm install -g teladoc-member-agents
@@ -25,8 +62,13 @@ npm install -g teladoc-member-agents
 
 1. **Set up your AI provider:**
    ```bash
+   # For Anthropic (Claude)
    teladoc-agent config --set provider anthropic --value claude-3-5-sonnet-20241022
-   teladoc-agent config --set apiKey --value your-api-key
+   teladoc-agent config --set apiKey --value YOUR_ANTHROPIC_API_KEY
+
+   # For OpenAI (GPT-4, etc.)
+   teladoc-agent config --set provider openai --value gpt-4
+   teladoc-agent config --set apiKey --value YOUR_OPENAI_API_KEY
    ```
 
 2. **Review your code changes:**
@@ -37,6 +79,11 @@ npm install -g teladoc-member-agents
 3. **Scan for security issues:**
    ```bash
    teladoc-agent security
+   ```
+
+4. **Analyze spec coverage:**
+   ```bash
+   teladoc-agent spec-coverage
    ```
 
 ## Commands
@@ -81,6 +128,25 @@ teladoc-agent config --set apiKey --value your-api-key
 teladoc-agent config --reset
 ```
 
+### Spec Coverage Analysis
+
+```bash
+# Analyze current directory for spec coverage
+teladoc-agent spec-coverage
+
+# Analyze specific file or directory
+teladoc-agent spec-coverage -f src/utils.ts
+
+# Output detailed analysis to markdown
+teladoc-agent spec-coverage --format markdown -o coverage-report.md
+
+# Skip parameter combination analysis (faster)
+teladoc-agent spec-coverage --skip-combinations
+
+# Focus only on missing scenarios
+teladoc-agent spec-coverage --skip-suggestions
+```
+
 ## Examples
 
 **Review your current changes:**
@@ -101,14 +167,34 @@ teladoc-agent security -f ./src
 ```bash
 teladoc-agent review --changes --format markdown -o code-review.md
 teladoc-agent security --format json -o security-report.json
+teladoc-agent spec-coverage --format markdown -o coverage-analysis.md
 ```
 
 ## Requirements
 
 - Node.js 18+
 - Git repository (for smart change detection)
-- API key from OpenAI or Anthropic
+- API key from OpenAI (GPT-4, etc.) or Anthropic (Claude)
 
-## License
+## Features
 
-MIT
+🔍 **Smart Code Review** - Automatically analyzes your git changes
+   - Security vulnerability detection
+   - HIPAA compliance checking
+   - Best practices enforcement
+   - Healthcare-focused analysis
+
+🔒 **Security Scanner** - Find vulnerabilities and compliance issues
+   - HIPAA/SOX compliance validation
+   - Security vulnerability detection
+   - Industry-standard reporting
+
+📋 **Spec Coverage Analyzer** - Analyze test coverage and suggest missing scenarios
+   - Function parameter combination analysis
+   - Missing test scenario detection
+   - Coverage gap identification
+   - Test template generation
+
+🤖 **AI Provider Support**
+   - Supports both Anthropic (Claude) and OpenAI (GPT-4, etc.)
+   - Easily switch providers via configuration
