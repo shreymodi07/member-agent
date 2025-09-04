@@ -153,10 +153,10 @@ Generate a ${type} specification that includes:
 ${this.getSpecificationTemplate(type)}
 
 Focus on:
-- Healthcare compliance requirements (HIPAA, SOX)
-- Security considerations for medical data
-- Integration points with Teladoc systems
-- Performance requirements for member-facing features
+- Compliance requirements for sensitive data
+- Security considerations and data protection
+- Integration points with existing systems
+- Performance requirements for user-facing features
 - Accessibility requirements (WCAG 2.1 AA)
 - Error handling and logging requirements
 
@@ -176,7 +176,7 @@ Provide a comprehensive, professional specification document.
 4. Request/Response Schemas
 5. Error Codes and Handling
 6. Rate Limiting and Throttling
-7. Data Privacy and HIPAA Compliance
+7. Data Privacy and Compliance
 8. Integration Examples
 9. Testing Requirements
 10. Monitoring and Logging

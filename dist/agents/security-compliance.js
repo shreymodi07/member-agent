@@ -14,8 +14,8 @@ class SecurityComplianceAgent {
     async scanSecurity(options) {
         const startTime = Date.now();
         // Read and analyze code
-        const { codeContent, fileCount } = await this.readCodeForSecurity(options.filePath);
-        const context = await this.analyzeProjectContext(options.filePath);
+        const { codeContent, fileCount } = await this.readCodeForSecurity(options.filePaths);
+        const context = await this.analyzeProjectContext(options.filePaths[0] || '.');
         // Perform security analysis
         const securityReport = await this.performSecurityAnalysis(codeContent, context, options.scanType, options.standard);
         // Parse security issues
@@ -25,7 +25,7 @@ class SecurityComplianceAgent {
         // Save to file if needed
         let outputPath;
         if (options.outputPath || options.format !== 'console') {
-            outputPath = options.outputPath || this.getDefaultOutputPath(options.filePath, options.format);
+            outputPath = options.outputPath || this.getDefaultOutputPath(options.filePaths[0] || '.', options.format);
             await fs_extra_1.default.ensureDir(path_1.default.dirname(outputPath));
             await fs_extra_1.default.writeFile(outputPath, formattedReport);
         }
@@ -49,39 +49,75 @@ class SecurityComplianceAgent {
             issues
         };
     }
-    async readCodeForSecurity(filePath) {
-        const stats = await fs_extra_1.default.stat(filePath);
-        if (stats.isDirectory()) {
-            const files = await this.getSecurityRelevantFiles(filePath);
-            const contents = await Promise.all(files.map(async (file) => {
+    async readCodeForSecurity(filePaths) {
+        const allFiles = [];
+        let totalFileCount = 0;
+        for (const filePath of filePaths) {
+            try {
+                const stats = await fs_extra_1.default.stat(filePath);
+                if (stats.isDirectory()) {
+                    const files = await this.getSecurityRelevantFiles(filePath);
+                    allFiles.push(...files);
+                }
+                else {
+                    allFiles.push(filePath);
+                }
+            }
+            catch (error) {
+                if (error.code === 'ENOENT') {
+                    console.warn(`Warning: File or directory not found: ${filePath}`);
+                }
+                else {
+                    throw error;
+                }
+            }
+        }
+        // Remove duplicates
+        const uniqueFiles = [...new Set(allFiles)];
+        const contents = await Promise.all(uniqueFiles.map(async (file) => {
+            try {
                 const content = await fs_extra_1.default.readFile(file, 'utf-8');
                 return `// File: ${file}\n${content}\n`;
-            }));
-            return {
-                codeContent: contents.join('\n'),
-                fileCount: files.length
-            };
-        }
-        else {
-            const content = await fs_extra_1.default.readFile(filePath, 'utf-8');
-            return {
-                codeContent: `// File: ${filePath}\n${content}`,
-                fileCount: 1
-            };
-        }
+            }
+            catch (error) {
+                console.warn(`Warning: Could not read file ${file}: ${error.message}`);
+                return '';
+            }
+        }));
+        return {
+            codeContent: contents.join('\n'),
+            fileCount: uniqueFiles.length
+        };
     }
     async getSecurityRelevantFiles(dirPath) {
         const files = [];
-        const entries = await fs_extra_1.default.readdir(dirPath);
+        let entries;
+        try {
+            entries = await fs_extra_1.default.readdir(dirPath);
+        }
+        catch (error) {
+            console.warn(`Warning: Could not read directory ${dirPath}: ${error.message}`);
+            return files;
+        }
         for (const entry of entries) {
             const fullPath = path_1.default.join(dirPath, entry);
-            const stats = await fs_extra_1.default.stat(fullPath);
-            if (stats.isDirectory() && !this.isIgnoredDirectory(entry)) {
-                const subFiles = await this.getSecurityRelevantFiles(fullPath);
-                files.push(...subFiles);
+            try {
+                const stats = await fs_extra_1.default.stat(fullPath);
+                if (stats.isDirectory() && !this.isIgnoredDirectory(entry)) {
+                    const subFiles = await this.getSecurityRelevantFiles(fullPath);
+                    files.push(...subFiles);
+                }
+                else if (this.isSecurityRelevantFile(entry)) {
+                    files.push(fullPath);
+                }
             }
-            else if (this.isSecurityRelevantFile(entry)) {
-                files.push(fullPath);
+            catch (error) {
+                if (error.code === 'ENOENT') {
+                    console.warn(`Warning: File not found, skipping ${fullPath}`);
+                }
+                else {
+                    console.warn(`Warning: Could not stat ${fullPath}: ${error.message}`);
+                }
             }
         }
         return files;
@@ -251,11 +287,11 @@ Perform comprehensive security analysis covering:
         switch (standard) {
             case 'hipaa':
                 return `
-HIPAA Compliance Requirements:
-- PHI access controls and encryption
-- Audit logging for PHI access
+General Compliance Requirements:
+- Data access controls and encryption
+- Audit logging for sensitive data access
 - Data breach notification procedures
-- Business associate agreements
+- Third-party agreements and assessments
 - Technical safeguards implementation
 - Administrative safeguards
 - Physical safeguards where applicable

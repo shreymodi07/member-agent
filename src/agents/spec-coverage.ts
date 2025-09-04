@@ -105,28 +105,52 @@ export class SpecCoverageAgent {
     const extensions = ['.ts', '.js', '.tsx', '.jsx'];
     
     const traverse = async (dir: string) => {
-      const items = await fs.readdir(dir);
+      let items: string[];
+      try {
+        items = await fs.readdir(dir);
+      } catch (error) {
+        console.warn(`Warning: Could not read directory ${dir}: ${(error as Error).message}`);
+        return;
+      }
       
       for (const item of items) {
         const fullPath = path.join(dir, item);
-        const stat = await fs.stat(fullPath);
-        
-        if (stat.isDirectory() && !item.includes('node_modules') && !item.includes('.git')) {
-          await traverse(fullPath);
-        } else if (extensions.some(ext => item.endsWith(ext)) && 
-                   !item.includes('.test.') && 
-                   !item.includes('.spec.')) {
-          files.push(fullPath);
+        try {
+          const stat = await fs.stat(fullPath);
+          
+          if (stat.isDirectory() && !item.includes('node_modules') && !item.includes('.git')) {
+            await traverse(fullPath);
+          } else if (extensions.some(ext => item.endsWith(ext)) && 
+                     !item.includes('.test.') && 
+                     !item.includes('.spec.')) {
+            files.push(fullPath);
+          }
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            console.warn(`Warning: File not found, skipping ${fullPath}`);
+          } else {
+            console.warn(`Warning: Could not stat ${fullPath}: ${(error as Error).message}`);
+          }
         }
       }
     };
     
-    if (await fs.pathExists(targetPath)) {
-      const stat = await fs.stat(targetPath);
-      if (stat.isDirectory()) {
-        await traverse(targetPath);
+    try {
+      if (await fs.pathExists(targetPath)) {
+        const stat = await fs.stat(targetPath);
+        if (stat.isDirectory()) {
+          await traverse(targetPath);
+        } else {
+          files.push(targetPath);
+        }
       } else {
-        files.push(targetPath);
+        console.warn(`Warning: Target path ${targetPath} does not exist`);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.warn(`Warning: Target path ${targetPath} not found`);
+      } else {
+        throw error;
       }
     }
     
@@ -332,24 +356,46 @@ ${content}
     const testPatterns = ['.test.', '.spec.', '__tests__'];
     
     const traverse = async (dir: string) => {
-      const items = await fs.readdir(dir);
+      let items: string[];
+      try {
+        items = await fs.readdir(dir);
+      } catch (error) {
+        console.warn(`Warning: Could not read directory ${dir}: ${(error as Error).message}`);
+        return;
+      }
       
       for (const item of items) {
         const fullPath = path.join(dir, item);
-        const stat = await fs.stat(fullPath);
-        
-        if (stat.isDirectory() && !item.includes('node_modules')) {
-          await traverse(fullPath);
-        } else if (testPatterns.some(pattern => item.includes(pattern))) {
-          testFiles.push(fullPath);
+        try {
+          const stat = await fs.stat(fullPath);
+          
+          if (stat.isDirectory() && !item.includes('node_modules')) {
+            await traverse(fullPath);
+          } else if (testPatterns.some(pattern => item.includes(pattern))) {
+            testFiles.push(fullPath);
+          }
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+            console.warn(`Warning: File not found, skipping ${fullPath}`);
+          } else {
+            console.warn(`Warning: Could not stat ${fullPath}: ${(error as Error).message}`);
+          }
         }
       }
     };
     
-    if (await fs.pathExists(targetPath)) {
-      const stat = await fs.stat(targetPath);
-      if (stat.isDirectory()) {
-        await traverse(targetPath);
+    try {
+      if (await fs.pathExists(targetPath)) {
+        const stat = await fs.stat(targetPath);
+        if (stat.isDirectory()) {
+          await traverse(targetPath);
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        console.warn(`Warning: Target path ${targetPath} not found`);
+      } else {
+        throw error;
       }
     }
     

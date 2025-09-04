@@ -1,6 +1,6 @@
 import { AgentConfig } from '../types';
 export interface SecurityScanOptions {
-    filePath: string;
+    filePaths: string[];
     scanType: 'vulnerabilities' | 'secrets' | 'compliance' | 'all';
     standard: 'hipaa' | 'sox' | 'pci' | 'gdpr';
     format: 'console' | 'json' | 'sarif';

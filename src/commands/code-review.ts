@@ -103,6 +103,22 @@ export class CodeReviewCommand extends BaseCommand {
           console.log(chalk.gray(`⚠️  ${result.criticalCount} critical, ${result.highCount} high priority`));
         }
 
+        // QA Testing Guidance
+        console.log('\n🧪 QA Testing Guidance:');
+        if (result.criticalCount > 0) {
+          console.log('• Critical code issues found - test error handling and edge cases thoroughly');
+          console.log('• Verify fixes for potential crashes, data corruption, or system failures');
+          console.log('• Test recovery mechanisms and error recovery scenarios');
+        } else if (result.highCount > 0) {
+          console.log('• Code improvements needed - test functionality with various inputs');
+          console.log('• Focus on performance, reliability, and user experience validation');
+          console.log('• Test integration with other system components');
+        } else {
+          console.log('• Code quality looks good - test new features and integration points');
+          console.log('• Verify existing functionality remains unaffected by changes');
+          console.log('• Perform end-to-end testing of the complete user workflow');
+        }
+
       } catch (error) {
         this.handleError(error as Error, options);
       }

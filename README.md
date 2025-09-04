@@ -1,21 +1,24 @@
 # Teladoc Member Agents
 
-AI-powered code review and security scanning for Teladoc development teams.
+AI-powered code review and security scanning for development teams.
 
 ## Features
 
 🔍 **Smart Code Review** - Automatically analyzes your git changes
 
 - Security vulnerability detection
-- HIPAA compliance checking
+- Code quality analysis
 - Best practices enforcement
-- Healthcare-focused analysis
+- Performance optimization suggestions
+- **NEW:** QA testing guidance with actionable recommendations
 
 🔒 **Security Scanner** - Find vulnerabilities and compliance issues
 
-- HIPAA/SOX compliance validation
 - Security vulnerability detection
-- Industry-standard reporting
+- Code security analysis
+- Best practices validation
+- **NEW:** Git diff scanning for efficient change-focused analysis
+- **NEW:** QA testing guidance with security-focused recommendations
 
 📋 **Spec Coverage Analyzer** - Analyze test coverage and suggest missing scenarios
 
@@ -23,6 +26,18 @@ AI-powered code review and security scanning for Teladoc development teams.
 - Missing test scenario detection
 - Coverage gap identification
 - Test template generation
+- **NEW:** QA testing guidance for comprehensive test validation
+
+🧪 **QA Test Generator** - Generate focused testing instructions for code changes
+
+- Simple 1-2 line testing instructions in plain English
+- Non-technical explanations for QA teams
+- Git diff integration for efficient analysis
+
+🤖 **AI Provider Support**
+
+- Supports both Anthropic (Claude) and OpenAI (GPT-4, etc.)
+- Easily switch providers via configuration
 
 ## Installation
 
@@ -61,6 +76,7 @@ npm install -g teladoc-member-agents
 ## Quick Start
 
 1. **Set up your AI provider:**
+
    ```bash
    # For Anthropic (Claude)
    teladoc-agent config --set provider anthropic --value claude-3-5-sonnet-20241022
@@ -72,18 +88,29 @@ npm install -g teladoc-member-agents
    ```
 
 2. **Review your code changes:**
+
    ```bash
    teladoc-agent review --changes
    ```
 
 3. **Scan for security issues:**
+
    ```bash
    teladoc-agent security
    ```
 
 4. **Analyze spec coverage:**
+
    ```bash
    teladoc-agent spec-coverage
+   # Or analyze only changed files:
+   teladoc-agent spec-coverage --diff
+   ```
+
+5. **Generate QA testing instructions:**
+
+   ```bash
+   teladoc-agent qa-test --diff
    ```
 
 ## Commands
@@ -109,6 +136,9 @@ teladoc-agent security
 
 # Scan specific file or directory
 teladoc-agent security -f path/to/scan
+
+# Scan only files changed in git diff (recommended for efficiency)
+teladoc-agent security --diff
 
 # Output to JSON file
 teladoc-agent security --format json -o security.json
@@ -137,6 +167,9 @@ teladoc-agent spec-coverage
 # Analyze specific file or directory
 teladoc-agent spec-coverage -f src/utils.ts
 
+# Analyze only files changed in git diff (recommended for efficiency)
+teladoc-agent spec-coverage --diff
+
 # Output detailed analysis to markdown
 teladoc-agent spec-coverage --format markdown -o coverage-report.md
 
@@ -145,6 +178,22 @@ teladoc-agent spec-coverage --skip-combinations
 
 # Focus only on missing scenarios
 teladoc-agent spec-coverage --skip-suggestions
+```
+
+### QA Testing Instructions
+
+```bash
+# Generate QA testing instructions for current directory
+teladoc-agent qa-test
+
+# Generate QA testing instructions for git diff changes
+teladoc-agent qa-test --diff
+
+# Analyze specific file for QA testing needs
+teladoc-agent qa-test -f src/components/Button.ts
+
+# Output QA analysis to JSON file
+teladoc-agent qa-test --diff --format json -o qa-analysis.json
 ```
 
 ## Examples
@@ -156,7 +205,7 @@ teladoc-agent spec-coverage --skip-suggestions
 teladoc-agent review --changes
 ```
 
-**Security scan with healthcare focus:**
+**Security scan your codebase:**
 
 ```bash
 teladoc-agent security -f ./src
@@ -175,26 +224,3 @@ teladoc-agent spec-coverage --format markdown -o coverage-analysis.md
 - Node.js 18+
 - Git repository (for smart change detection)
 - API key from OpenAI (GPT-4, etc.) or Anthropic (Claude)
-
-## Features
-
-🔍 **Smart Code Review** - Automatically analyzes your git changes
-   - Security vulnerability detection
-   - HIPAA compliance checking
-   - Best practices enforcement
-   - Healthcare-focused analysis
-
-🔒 **Security Scanner** - Find vulnerabilities and compliance issues
-   - HIPAA/SOX compliance validation
-   - Security vulnerability detection
-   - Industry-standard reporting
-
-📋 **Spec Coverage Analyzer** - Analyze test coverage and suggest missing scenarios
-   - Function parameter combination analysis
-   - Missing test scenario detection
-   - Coverage gap identification
-   - Test template generation
-
-🤖 **AI Provider Support**
-   - Supports both Anthropic (Claude) and OpenAI (GPT-4, etc.)
-   - Easily switch providers via configuration

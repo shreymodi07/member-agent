@@ -232,11 +232,11 @@ Please provide a change-focused code review covering:
    - Secrets management
    - Data encryption requirements
 
-2. **Healthcare Compliance**:
-   - HIPAA compliance (PHI handling, logging, access controls)
-   - SOX compliance for financial data
+2. **Compliance Requirements**:
+   - Data privacy and protection standards
+   - Regulatory compliance for sensitive data
    - Data retention and deletion policies
-   - Audit trail requirements
+   - Audit trail and logging requirements
 
 3. **Performance & Scalability**:
    - Database query optimization

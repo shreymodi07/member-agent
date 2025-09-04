@@ -24,7 +24,7 @@ export class SecurityCommand extends BaseCommand {
     this.command
       .option('-f, --file <path>', 'File or directory to scan')
       .option('--scan <type>', 'Type of scan (vulnerabilities|secrets|compliance|all)', 'all')
-      .option('--standard <standard>', 'Compliance standard (hipaa|sox|pci|gdpr)', 'hipaa')
+      .option('--standard <standard>', 'Compliance standard (hipaa|sox|pci|gdpr)', 'gdpr')
       .option('--format <format>', 'Output format (console|json|sarif)', 'console')
       .option('-o, --output <path>', 'Output file path');
   }
@@ -52,9 +52,9 @@ export class SecurityCommand extends BaseCommand {
         const agentConfig = await configManager.getAgentConfig();
         const agent = new SecurityComplianceAgent(agentConfig);
         const result = await agent.scanSecurity({
-          filePath: options.file!,
+          filePaths: options.file ? [options.file] : ['.'],
           scanType: options.scan || 'all',
-          standard: options.standard || 'hipaa',
+          standard: options.standard || 'gdpr',
           format: options.format || 'console',
           outputPath: options.output
         });

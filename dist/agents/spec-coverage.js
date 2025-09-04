@@ -78,27 +78,57 @@ class SpecCoverageAgent {
         const files = [];
         const extensions = ['.ts', '.js', '.tsx', '.jsx'];
         const traverse = async (dir) => {
-            const items = await fs.readdir(dir);
+            let items;
+            try {
+                items = await fs.readdir(dir);
+            }
+            catch (error) {
+                console.warn(`Warning: Could not read directory ${dir}: ${error.message}`);
+                return;
+            }
             for (const item of items) {
                 const fullPath = path.join(dir, item);
-                const stat = await fs.stat(fullPath);
-                if (stat.isDirectory() && !item.includes('node_modules') && !item.includes('.git')) {
-                    await traverse(fullPath);
+                try {
+                    const stat = await fs.stat(fullPath);
+                    if (stat.isDirectory() && !item.includes('node_modules') && !item.includes('.git')) {
+                        await traverse(fullPath);
+                    }
+                    else if (extensions.some(ext => item.endsWith(ext)) &&
+                        !item.includes('.test.') &&
+                        !item.includes('.spec.')) {
+                        files.push(fullPath);
+                    }
                 }
-                else if (extensions.some(ext => item.endsWith(ext)) &&
-                    !item.includes('.test.') &&
-                    !item.includes('.spec.')) {
-                    files.push(fullPath);
+                catch (error) {
+                    if (error.code === 'ENOENT') {
+                        console.warn(`Warning: File not found, skipping ${fullPath}`);
+                    }
+                    else {
+                        console.warn(`Warning: Could not stat ${fullPath}: ${error.message}`);
+                    }
                 }
             }
         };
-        if (await fs.pathExists(targetPath)) {
-            const stat = await fs.stat(targetPath);
-            if (stat.isDirectory()) {
-                await traverse(targetPath);
+        try {
+            if (await fs.pathExists(targetPath)) {
+                const stat = await fs.stat(targetPath);
+                if (stat.isDirectory()) {
+                    await traverse(targetPath);
+                }
+                else {
+                    files.push(targetPath);
+                }
             }
             else {
-                files.push(targetPath);
+                console.warn(`Warning: Target path ${targetPath} does not exist`);
+            }
+        }
+        catch (error) {
+            if (error.code === 'ENOENT') {
+                console.warn(`Warning: Target path ${targetPath} not found`);
+            }
+            else {
+                throw error;
             }
         }
         return files;
@@ -271,22 +301,49 @@ ${content}
         const testFiles = [];
         const testPatterns = ['.test.', '.spec.', '__tests__'];
         const traverse = async (dir) => {
-            const items = await fs.readdir(dir);
+            let items;
+            try {
+                items = await fs.readdir(dir);
+            }
+            catch (error) {
+                console.warn(`Warning: Could not read directory ${dir}: ${error.message}`);
+                return;
+            }
             for (const item of items) {
                 const fullPath = path.join(dir, item);
-                const stat = await fs.stat(fullPath);
-                if (stat.isDirectory() && !item.includes('node_modules')) {
-                    await traverse(fullPath);
+                try {
+                    const stat = await fs.stat(fullPath);
+                    if (stat.isDirectory() && !item.includes('node_modules')) {
+                        await traverse(fullPath);
+                    }
+                    else if (testPatterns.some(pattern => item.includes(pattern))) {
+                        testFiles.push(fullPath);
+                    }
                 }
-                else if (testPatterns.some(pattern => item.includes(pattern))) {
-                    testFiles.push(fullPath);
+                catch (error) {
+                    if (error.code === 'ENOENT') {
+                        console.warn(`Warning: File not found, skipping ${fullPath}`);
+                    }
+                    else {
+                        console.warn(`Warning: Could not stat ${fullPath}: ${error.message}`);
+                    }
                 }
             }
         };
-        if (await fs.pathExists(targetPath)) {
-            const stat = await fs.stat(targetPath);
-            if (stat.isDirectory()) {
-                await traverse(targetPath);
+        try {
+            if (await fs.pathExists(targetPath)) {
+                const stat = await fs.stat(targetPath);
+                if (stat.isDirectory()) {
+                    await traverse(targetPath);
+                }
+            }
+        }
+        catch (error) {
+            if (error.code === 'ENOENT') {
+                console.warn(`Warning: Target path ${targetPath} not found`);
+            }
+            else {
+                throw error;
             }
         }
         return testFiles;

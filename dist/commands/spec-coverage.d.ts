@@ -7,6 +7,7 @@ export declare class SpecCoverageCommand extends BaseCommand {
     protected setupAction(): void;
     private initializeProvider;
     private execute;
+    private combineResults;
     private writeOutput;
 }
 //# sourceMappingURL=spec-coverage.d.ts.map

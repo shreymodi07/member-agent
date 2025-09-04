@@ -6,6 +6,7 @@ import { CodeReviewCommand } from './commands/code-review';
 import { SecurityCommand } from './commands/security';
 import { ConfigCommand } from './commands/config';
 import { SpecCoverageCommand } from './commands/spec-coverage';
+import { QATestCommand } from './commands/qa-test';
 import { version } from '../package.json';
 
 const program = new Command();
@@ -20,6 +21,7 @@ program.addCommand(new CodeReviewCommand().getCommand());
 program.addCommand(new SecurityCommand().getCommand());
 program.addCommand(new ConfigCommand().getCommand());
 program.addCommand(new SpecCoverageCommand().getCommand());
+program.addCommand(new QATestCommand().getCommand());
 
 // Global options
 program
