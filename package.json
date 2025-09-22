@@ -11,6 +11,9 @@
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
     "test": "jest",
+    "test:azure": "tsx test-azure.ts",
+    "setup:azure": "tsx setup-azure.ts",
+    "diagnose:azure": "tsx diagnose-azure.ts",
     "lint": "eslint src/**/*.ts",
     "format": "prettier --write src/**/*.ts",
     "prepare": "npm run build"

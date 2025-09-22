@@ -5,8 +5,11 @@ export interface BaseCommandOptions {
 export interface AgentConfig {
     apiKey?: string;
     model?: string;
-    provider?: 'openai' | 'anthropic' | 'gpt-4';
+    provider?: 'azure-openai';
     baseUrl?: string;
+    azureEndpoint?: string;
+    azureDeployment?: string;
+    azureApiVersion?: string;
 }
 export interface ProjectContext {
     rootPath: string;

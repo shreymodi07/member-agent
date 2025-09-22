@@ -7,6 +7,9 @@ import { SecurityCommand } from './commands/security';
 import { ConfigCommand } from './commands/config';
 import { SpecCoverageCommand } from './commands/spec-coverage';
 import { QATestCommand } from './commands/qa-test';
+import { RubocopFixerCommand } from './commands/rubocop-fixer';
+import { RubocopFixerDiffCommand } from './commands/rubocop-fix-diff';
+import { QuickAzureCommand } from './commands/quick-azure';
 import { version } from '../package.json';
 
 const program = new Command();
@@ -22,6 +25,9 @@ program.addCommand(new SecurityCommand().getCommand());
 program.addCommand(new ConfigCommand().getCommand());
 program.addCommand(new SpecCoverageCommand().getCommand());
 program.addCommand(new QATestCommand().getCommand());
+program.addCommand(new RubocopFixerCommand().getCommand());
+program.addCommand(new RubocopFixerDiffCommand().getCommand());
+program.addCommand(new QuickAzureCommand().getCommand());
 
 // Global options
 program

@@ -11,12 +11,15 @@ class ConfigManager {
     constructor() {
         this.configPath = path_1.default.join(os_1.default.homedir(), '.teladoc-agent', 'config.json');
         this.defaultConfig = {
-            provider: 'openai',
-            model: 'gpt-4',
+            provider: 'azure-openai',
+            model: 'gpt-4.1',
             defaultLanguage: 'typescript',
             packageManager: 'npm',
             outputDir: './output',
-            templatesDir: './templates'
+            templatesDir: './templates',
+            azureEndpoint: 'https://member-agent-resource.cognitiveservices.azure.com',
+            azureDeployment: 'gpt-4.1',
+            azureApiVersion: '2024-02-15-preview'
         };
     }
     async get(key) {
@@ -53,7 +56,10 @@ class ConfigManager {
             apiKey: config.apiKey,
             model: config.model,
             provider: config.provider,
-            baseUrl: config.baseUrl
+            baseUrl: config.baseUrl,
+            azureEndpoint: config.azureEndpoint,
+            azureDeployment: config.azureDeployment,
+            azureApiVersion: config.azureApiVersion
         };
     }
 }

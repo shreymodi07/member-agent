@@ -1,108 +1,141 @@
 import { AgentConfig } from '../types';
-import Anthropic from '@anthropic-ai/sdk';
-import OpenAI from 'openai';
+// NOTE: OpenAI and Anthropic support intentionally disabled (commented) per current requirement.
+// To re-enable later, uncomment the imports and related logic below.
+// import Anthropic from '@anthropic-ai/sdk';
+// import OpenAI from 'openai';
 
 export class AIProvider {
   private config: Required<AgentConfig>;
-  private anthropic?: Anthropic;
-  private openai?: OpenAI;
+  // private anthropic?: Anthropic; // disabled
+  // private openai?: OpenAI; // disabled
+  // private azureOpenai?: OpenAI; // unused now that we use direct REST
+  private azureBaseUrl?: string;
 
   constructor(config?: AgentConfig) {
-    const provider = config?.provider || 'openai';
-    let defaultModel = 'gpt-4';
-    if (provider === 'anthropic') {
-      defaultModel = 'claude-3-sonnet';
-    }
+    // Force provider to azure-openai only.
+    const provider: 'azure-openai' = 'azure-openai';
+    const defaultModel = 'gpt-4.1';
     this.config = {
-      apiKey: config?.apiKey || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || '',
+  apiKey: config?.apiKey || process.env.AZURE_OPENAI_API_KEY || '',
       model: config?.model || defaultModel,
       provider: provider,
-      baseUrl: config?.baseUrl || ''
+      baseUrl: config?.baseUrl || '',
+      azureEndpoint: config?.azureEndpoint || process.env.AZURE_OPENAI_ENDPOINT || '',
+      azureDeployment: config?.azureDeployment || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1',
+      azureApiVersion: config?.azureApiVersion || process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview'
     };
 
-    // Correct model if it doesn't match the provider
-    if ((this.config.provider === 'openai' || this.config.provider === 'gpt-4') && this.config.model.startsWith('claude')) {
-      this.config.model = 'gpt-4';
-    } else if (this.config.provider === 'anthropic' && this.config.model.startsWith('gpt')) {
-      this.config.model = 'claude-3-sonnet';
+    // Enforce Azure model naming expectation
+    if (!this.config.model.startsWith('gpt')) {
+      this.config.model = 'gpt-4.1';
     }
 
     if (!this.config.apiKey) {
-      throw new Error('API key is required. Set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variable or provide it in config.');
+      throw new Error('API key is required. Set AZURE_OPENAI_API_KEY environment variable or provide it in config.');
     }
 
-    if (this.config.provider === 'anthropic') {
-      this.anthropic = new Anthropic({
-        apiKey: this.config.apiKey,
-      });
-    } else if (this.config.provider === 'openai' || this.config.provider === 'gpt-4') {
-      this.openai = new OpenAI({
-        apiKey: this.config.apiKey,
-        baseURL: this.config.baseUrl || undefined,
-      });
-    }
+    // Azure-only path
+      // For Azure OpenAI, the baseURL should be just the resource endpoint
+      // The SDK will automatically append /openai/deployments/{deployment}/chat/completions
+      const azureBaseUrl = this.config.azureEndpoint?.replace(/\/openai.*$/, '') ||
+                          'https://member-agent-resource.cognitiveservices.azure.com';
+
+      console.log('🔧 Azure OpenAI Configuration:');
+      console.log(`   Raw Endpoint: ${this.config.azureEndpoint}`);
+      console.log(`   Cleaned Endpoint: ${azureBaseUrl}`);
+      console.log(`   Deployment: ${this.config.azureDeployment}`);
+      console.log(`   API Version: ${this.config.azureApiVersion}`);
+      console.log(`   Full URL will be: ${azureBaseUrl}/openai/deployments/${this.config.azureDeployment}/chat/completions`);
+
+      // Validate configuration
+      if (!this.config.azureDeployment) {
+        throw new Error('Azure deployment name is required. Set azureDeployment in config.');
+      }
+
+      // Save cleaned base URL for REST calls
+      this.azureBaseUrl = azureBaseUrl;
+    // End constructor
   }
 
   async generateText(prompt: string): Promise<string> {
-    // 'gpt-4' is treated as OpenAI provider for convenience.
-    switch (this.config.provider) {
-      case 'openai':
-      case 'gpt-4':
-        return await this.generateOpenAI(prompt);
-      case 'anthropic':
-        return await this.generateAnthropic(prompt);
-      default:
-        throw new Error(`Unsupported provider: ${this.config.provider}`);
-    }
+    // Only Azure path active.
+    return await this.generateAzureOpenAI(prompt);
   }
 
-  private async generateOpenAI(prompt: string): Promise<string> {
+  // private async generateOpenAI(...) { /* disabled - see comment above */ }
+  // private async generateAnthropic(...) { /* disabled - see comment above */ }
+
+  private async generateAzureOpenAI(prompt: string): Promise<string> {
     try {
-      if (!this.openai) {
-        throw new Error('OpenAI client not initialized');
+      if (!this.azureBaseUrl) {
+        throw new Error('Azure OpenAI base URL not configured');
       }
-      const completion = await this.openai.chat.completions.create({
-        model: this.config.model || 'gpt-4',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
+
+      console.log('🚀 Making Azure OpenAI REST request...');
+      console.log(`   Model/Deployment: ${this.config.azureDeployment}`);
+      console.log(`   API Version: ${this.config.azureApiVersion}`);
+
+      const url = `${this.azureBaseUrl}/openai/deployments/${this.config.azureDeployment}/chat/completions?api-version=${this.config.azureApiVersion}`;
+      if (this.config.azureDeployment.includes('.')) {
+        console.log('⚠ Deployment name contains a dot. This is uncommon for Azure deployment aliases. Double‑check in portal -> Model deployments.');
+      }
+      if (/cognitiveservices\.azure\.com/i.test(this.azureBaseUrl)) {
+        console.log('ℹ Endpoint uses cognitiveservices domain. Newer Azure OpenAI resources typically use <name>.openai.azure.com');
+      }
+
+      const body = {
+        messages: [{ role: 'user', content: prompt }],
         max_tokens: 4000
+      };
+
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': this.config.apiKey
+        },
+        body: JSON.stringify(body)
       });
-      const content = completion.choices[0]?.message?.content;
+
+      const text = await resp.text();
+
+      if (!resp.ok) {
+        const errMsg = `Azure REST request failed: ${resp.status} ${resp.statusText} - ${text}`;
+        throw new Error(errMsg);
+      }
+
+      const json = JSON.parse(text);
+      const content = json.choices?.[0]?.message?.content;
       if (content) {
+        console.log('✅ Azure OpenAI REST request successful');
         return content;
-      } else {
-        throw new Error('Unexpected response from OpenAI API');
-      }
-    } catch (error) {
-      console.warn(`OpenAI API error: ${(error as Error).message}, falling back to mock response`);
-      return this.generateMockResponse(prompt);
-    }
-  }
-
-  private async generateAnthropic(prompt: string): Promise<string> {
-    try {
-      if (!this.anthropic) {
-        throw new Error('Anthropic client not initialized');
       }
 
-      const message = await this.anthropic.messages.create({
-        model: this.config.model,
-        max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: prompt
-        }]
-      });
+      throw new Error('Unexpected response shape from Azure OpenAI REST API');
+    } catch (error: any) {
+      console.error('❌ Azure OpenAI API error:', (error as Error).message);
 
-      const content = message.content[0];
-      if (content.type === 'text') {
-        return content.text;
-      } else {
-        throw new Error('Unexpected response type from Anthropic API');
+      // Provide specific guidance based on error
+      if (/(404)|(Resource not found)|(DeploymentNotFound)/i.test((error as Error).message)) {
+        console.error('\n🔍 Troubleshooting 404 Error:');
+        console.error('   1. Verify deployment name exists in Azure portal');
+        console.error('   2. Deployment name is NOT the model. Copy the alias from the left column in Model deployments.');
+        console.error('   3. Remove any version dots if you mistakenly used a model version as deployment alias (e.g., use gpt4o not gpt-4.1).');
+        console.error('   4. Ensure API version matches a supported preview for that model (2024-02-15-preview or 2024-08-01-preview).');
+        console.error('   5. Confirm resource domain (<name>.openai.azure.com vs cognitiveservices) matches the type you created.');
+        console.error('\n💡 Common deployment aliases: gpt4o, gpt4o-mini, gpt-35-turbo');
+      } else if (/(\b401\b)|(unauthorized)/i.test((error as Error).message)) {
+        console.error('\n🔍 Troubleshooting 401 Error:');
+        console.error('   1. Verify API key is correct');
+        console.error('   2. Check API key permissions in Azure portal');
+        console.error('   3. Ensure API key hasn\'t expired');
+      } else if (/(\b429\b)|(rate limit)/i.test((error as Error).message)) {
+        console.error('\n🔍 Troubleshooting 429 Error:');
+        console.error('   1. Rate limit exceeded - wait and retry');
+        console.error('   2. Check your Azure subscription limits');
       }
-    } catch (error) {
-      console.warn(`Anthropic API error: ${(error as Error).message}, falling back to mock response`);
+
+      console.warn(`Azure OpenAI API error: ${(error as Error).message}, falling back to mock response`);
       return this.generateMockResponse(prompt);
     }
   }

@@ -6,5 +6,6 @@ export declare class ConfigCommand extends BaseCommand {
     private setupApiConfig;
     private setupProviderConfig;
     private setupProjectConfig;
+    private setupAzureConfig;
 }
 //# sourceMappingURL=config.d.ts.map

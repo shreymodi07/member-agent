@@ -110,49 +110,30 @@ class ConfigCommand extends base_1.BaseCommand {
         });
     }
     async setupApiConfig(configManager) {
-        const answers = await inquirer_1.default.prompt([
+        const currentConfig = await configManager.getAll();
+        const isAzure = true; // Simplified: only Azure supported now
+        const questions = [
             {
                 type: 'password',
                 name: 'apiKey',
-                message: 'Enter your API key:',
+                message: `Enter your ${isAzure ? 'Azure OpenAI' : 'API'} key:`,
                 mask: '*'
-            },
-            {
-                type: 'input',
-                name: 'baseUrl',
-                message: 'Enter base URL (optional):',
-                default: ''
             }
-        ]);
+        ];
+        // baseUrl input removed (non-Azure providers disabled)
+        const answers = await inquirer_1.default.prompt(questions);
         if (answers.apiKey) {
             await configManager.set('apiKey', answers.apiKey);
         }
-        if (answers.baseUrl) {
-            await configManager.set('baseUrl', answers.baseUrl);
-        }
+        // baseUrl skipped in simplified mode
         console.log(chalk_1.default.green('✅ API configuration saved'));
     }
     async setupProviderConfig(configManager) {
-        const answers = await inquirer_1.default.prompt([
-            {
-                type: 'list',
-                name: 'provider',
-                message: 'Select AI provider:',
-                choices: [
-                    { name: 'OpenAI', value: 'openai' },
-                    { name: 'Anthropic', value: 'anthropic' }
-                ]
-            },
-            {
-                type: 'input',
-                name: 'model',
-                message: 'Enter model name:',
-                default: 'gpt-4'
-            }
-        ]);
-        await configManager.set('provider', answers.provider);
-        await configManager.set('model', answers.model);
-        console.log(chalk_1.default.green('✅ Provider configuration saved'));
+        console.log(chalk_1.default.yellow('Provider selection disabled. Using Azure OpenAI only.'));
+        await configManager.set('provider', 'azure-openai');
+        await configManager.set('model', 'gpt-4.1');
+        await this.setupAzureConfig(configManager);
+        console.log(chalk_1.default.green('✅ Azure provider configuration saved'));
     }
     async setupProjectConfig(configManager) {
         const answers = await inquirer_1.default.prompt([
@@ -173,6 +154,32 @@ class ConfigCommand extends base_1.BaseCommand {
         await configManager.set('defaultLanguage', answers.defaultLanguage);
         await configManager.set('packageManager', answers.packageManager);
         console.log(chalk_1.default.green('✅ Project defaults saved'));
+    }
+    async setupAzureConfig(configManager) {
+        const answers = await inquirer_1.default.prompt([
+            {
+                type: 'input',
+                name: 'azureEndpoint',
+                message: 'Azure OpenAI endpoint URL:',
+                default: 'https://member-agent-resource.cognitiveservices.azure.com'
+            },
+            {
+                type: 'input',
+                name: 'azureDeployment',
+                message: 'Azure deployment name:',
+                default: 'gpt-4.1'
+            },
+            {
+                type: 'input',
+                name: 'azureApiVersion',
+                message: 'Azure API version:',
+                default: '2025-01-01-preview'
+            }
+        ]);
+        await configManager.set('azureEndpoint', answers.azureEndpoint);
+        await configManager.set('azureDeployment', answers.azureDeployment);
+        await configManager.set('azureApiVersion', answers.azureApiVersion);
+        console.log(chalk_1.default.green('✅ Azure OpenAI configuration saved'));
     }
 }
 exports.ConfigCommand = ConfigCommand;

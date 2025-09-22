@@ -1,0 +1,1 @@
+{"version":3,"file":"rubocop-fix-diff.d.ts","sourceRoot":"","sources":["../../src/commands/rubocop-fix-diff.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,WAAW,EAAE,MAAM,QAAQ,CAAC;AAerC,qBAAa,uBAAwB,SAAQ,WAAW;;IAKtD,SAAS,CAAC,YAAY,IAAI,IAAI;IAU9B,SAAS,CAAC,WAAW,IAAI,IAAI;CAoC9B"}

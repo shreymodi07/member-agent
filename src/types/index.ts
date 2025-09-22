@@ -6,8 +6,13 @@ export interface BaseCommandOptions {
 export interface AgentConfig {
   apiKey?: string;
   model?: string;
-  provider?: 'openai' | 'anthropic' | 'gpt-4';
-  baseUrl?: string;
+  // provider narrowed to azure-openai per current simplified setup.
+  // Previously supported: 'openai' | 'anthropic' | 'gpt-4'
+  provider?: 'azure-openai';
+  baseUrl?: string; // retained for future reinstatement of other providers
+  azureEndpoint?: string;
+  azureDeployment?: string;
+  azureApiVersion?: string;
 }
 
 export interface ProjectContext {
