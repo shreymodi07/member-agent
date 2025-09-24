@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# This fake rubocop scans files provided as args and replaces the long concat line with interpolation
+for f in "$@"; do
+  if [ -f "$f" ]; then
+    awk '{ if ($0 ~ /"User: \\"\+ user.name \+ \" <\" \+ user.email \+ \">\"/) print "      \"User: \#{user.name} <#{user.email}>\""; else print $0 }' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+  fi
+done
+exit 0

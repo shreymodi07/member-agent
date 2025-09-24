@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+if [ "$1" == "exec" ]; then
+  shift
+  exec "$@"
+else
+  echo "bundle: simulated" >&2
+fi

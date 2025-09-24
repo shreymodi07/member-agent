@@ -20,7 +20,8 @@ class RubocopFixerDiffCommand extends base_1.BaseCommand {
             .option('-m, --max-iterations <number>', 'Maximum number of fix iterations', '5')
             .option('--staged', 'Use staged changes (git diff --cached) instead of working tree vs HEAD', false)
             .option('--rubocop-only', 'Run rubocop -A on changed files and keep only corrected lines within diff', false)
-            .option('--ruby-root <dir>', 'Explicit Ruby project root (directory containing Gemfile)', '');
+            .option('--ruby-root <dir>', 'Explicit Ruby project root (directory containing Gemfile)', '')
+            .option('--preview', 'Preview roots/files & changed lines without executing RuboCop', false);
     }
     setupAction() {
         this.command.action(async (options) => {
@@ -36,7 +37,8 @@ class RubocopFixerDiffCommand extends base_1.BaseCommand {
                     diffOnly: true,
                     staged: !!options.staged,
                     rubocopOnly: !!options.rubocopOnly,
-                    rubyRoot: options.rubyRoot || undefined
+                    rubyRoot: options.rubyRoot || undefined,
+                    preview: !!options.preview
                 });
                 spinner.stop();
                 console.log(chalk_1.default.green('✅ Diff-only Rubocop fixing completed!'));

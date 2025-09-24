@@ -10,6 +10,7 @@ export interface RubocopFixerOptions {
   diffOnly?: boolean; // if true, only fix issues within git diff (staged or against HEAD)
   staged?: boolean;   // if true, use staged diff; else working tree vs HEAD
   rubyRoot?: string;  // explicit Ruby project root containing Gemfile
+  preview?: boolean;  // if true, only show what would be processed
 }
 
 export interface RubocopFixerResult {
@@ -29,7 +30,7 @@ export class RubocopFixerAgent {
   }
 
   async fixRubocop(options: RubocopFixerOptions): Promise<RubocopFixerResult> {
-  const { projectPath, maxIterations = 10, diffOnly = false, staged = false, rubyRoot } = options;
+  const { projectPath, maxIterations = 10, diffOnly = false, staged = false, rubyRoot, preview = false } = options;
     let iteration = 0;
     let totalFixes = 0;
     let totalDisables = 0;
@@ -42,18 +43,17 @@ export class RubocopFixerAgent {
     // If diffOnly and user prefers rubocop-only mode, run RuboCop auto-correct on changed files
     if (diffOnly && (options as any).rubocopOnly) {
       if (changedMap && changedMap.size > 0) {
-        await this.runRubocopAutoCorrectOnChangedFiles(projectPath, changedMap);
+        await this.runRubocopAutoCorrectOnChangedFiles(projectPath, changedMap, { preview });
       } else {
         console.log('No changed Ruby lines detected; skipping rubocop auto-correct.');
       }
 
-      // After running rubocop-only, return summary (no further AI fixes)
       return {
         totalIterations: 1,
         totalFixes: 0,
         totalDisables: 0,
         disabledRules: [],
-        summary: 'RuboCop auto-correct applied to changed lines only.'
+        summary: preview ? 'Preview only: listed roots/files; no RuboCop run.' : 'RuboCop auto-correct applied to changed lines only.'
       };
     }
 
@@ -139,55 +139,111 @@ export class RubocopFixerAgent {
     }
   }
 
-  private async runRubocopAutoCorrectOnChangedFiles(projectPath: string, changedMap: Map<string, Set<number>>): Promise<void> {
+  private async runRubocopAutoCorrectOnChangedFiles(projectPath: string, changedMap: Map<string, Set<number>>, opts: { preview?: boolean } = {}): Promise<void> {
+    // Multi-root support: group changed Ruby files by nearest Gemfile root and run per root
     try {
-      const files = Array.from(changedMap.keys()).map(f => path.join(projectPath, f)).filter(f => f.endsWith('.rb'));
-      if (files.length === 0) {
+      const rubyFiles = Array.from(changedMap.keys())
+        .filter(f => f.endsWith('.rb'))
+        .map(rel => ({ rel, abs: path.join(projectPath, rel) }));
+
+      if (rubyFiles.length === 0) {
         console.log('No Ruby files in diff to run rubocop on.');
         return;
       }
 
-      // Save original contents to allow restoring unmodified lines
-      const originalContents = new Map<string, string[]>();
-      for (const f of files) {
-        if (await fs.pathExists(f)) {
-          const content = await fs.readFile(f, 'utf-8');
-          originalContents.set(f, content.split('\n'));
+      interface GroupFileInfo {
+        relFromRoot: string;          // path relative to ruby root
+        abs: string;                  // absolute path to file
+        relOriginal: string;          // original rel path from projectPath
+        diffLines: Set<number>;       // changed line numbers
+        originalContent?: string[];   // captured before rubocop run
+      }
+      const groups = new Map<string, GroupFileInfo[]>(); // key: ruby root
+
+      for (const file of rubyFiles) {
+        let rubyRoot = this.findRubyRoot(path.dirname(file.abs));
+        if (!rubyRoot) {
+          // If no Gemfile upwards, skip but warn once per file
+            console.warn(`Skipping ${file.rel}: no Gemfile found in its ancestor directories.`);
+            continue;
+        }
+        const relFromRoot = path.relative(rubyRoot, file.abs);
+        const diffLines = changedMap.get(file.rel) || new Set<number>();
+        const list = groups.get(rubyRoot) || [];
+        list.push({ relFromRoot, abs: file.abs, relOriginal: file.rel, diffLines });
+        groups.set(rubyRoot, list);
+      }
+
+      if (groups.size === 0) {
+        console.log('No Ruby files with detectable Gemfile roots.');
+        return;
+      }
+
+      console.log(`Detected ${groups.size} Ruby project root(s) for diff files.`);
+
+      // Preview mode early output table
+      const tableRows: string[] = [];
+      tableRows.push('ROOT | FILES | CHANGED LINES');
+      tableRows.push('-----|-------|---------------');
+      for (const [root, files] of groups.entries()) {
+        const changedLinesTotal = files.reduce((acc, f) => acc + f.diffLines.size, 0);
+        tableRows.push(`${root} | ${files.length} | ${changedLinesTotal}`);
+        if (opts.preview) {
+          files.forEach(f => {
+            console.log(`  • ${f.relFromRoot} (${f.diffLines.size} changed)`);
+          });
         }
       }
+      console.log('\nSummary:');
+      for (const row of tableRows) console.log(row);
+      console.log('');
 
-      console.log(`Running RuboCop auto-correct on ${files.length} files...`);
-      try {
-        execSync(`cd ${projectPath} && bundle exec rubocop -A ${files.map(p => '"' + p + '"').join(' ')}`, { stdio: 'inherit' });
-      } catch (e) {
-        // rubocop may exit non-zero even if corrections applied; continue
-        console.log('RuboCop finished with non-zero exit code (this may be normal).');
+      if (opts.preview) {
+        console.log('Preview mode enabled; skipping RuboCop execution.');
+        return;
       }
 
-      // For each file, merge corrected lines but only keep changes on lines present in changedMap
-      for (const [relPath, lineSet] of changedMap.entries()) {
-        const absPath = path.join(projectPath, relPath);
-        if (!await fs.pathExists(absPath)) continue;
-        const newContent = (await fs.readFile(absPath, 'utf-8')).split('\n');
-        const orig = originalContents.get(absPath) || [];
-
-        // Build merged lines: for lines not in lineSet, restore original
-        for (let i = 0; i < Math.max(orig.length, newContent.length); i++) {
-          const lineNum = i + 1;
-          if (!lineSet.has(lineNum)) {
-            // restore original line if exists, else keep new
-            if (orig[i] !== undefined) {
-              newContent[i] = orig[i];
-            }
+      for (const [root, files] of groups.entries()) {
+        // Bundler install check
+        try {
+          execSync(`cd ${root} && bundle check`, { stdio: 'ignore' });
+        } catch {
+          console.warn(`⚠ Dependencies not installed for root ${root}. Run: (cd ${root} && bundle install)`);
+        }
+        console.log(`➡ Running RuboCop in root: ${root} (${files.length} file(s))`);
+        // Capture original contents
+        for (const info of files) {
+          if (await fs.pathExists(info.abs)) {
+            info.originalContent = (await fs.readFile(info.abs, 'utf-8')).split('\n');
           }
         }
+        const fileArgs = files.map(f => '"' + f.relFromRoot + '"').join(' ');
+        try {
+          execSync(`cd ${root} && bundle exec rubocop -A ${fileArgs}`, { stdio: 'inherit' });
+        } catch (e) {
+          console.log('RuboCop finished with non-zero exit code in root', root);
+        }
 
-        await fs.writeFile(absPath, newContent.join('\n'));
+        // Merge back only changed lines modifications
+        for (const info of files) {
+          if (!info.originalContent) continue;
+          if (!await fs.pathExists(info.abs)) continue;
+          const newContent = (await fs.readFile(info.abs, 'utf-8')).split('\n');
+          const orig = info.originalContent;
+          // Restore lines not in diff set
+          for (let i = 0; i < Math.max(orig.length, newContent.length); i++) {
+            const lineNum = i + 1;
+            if (!info.diffLines.has(lineNum)) {
+              if (orig[i] !== undefined) newContent[i] = orig[i];
+            }
+          }
+          await fs.writeFile(info.abs, newContent.join('\n'));
+        }
       }
 
-      console.log('RuboCop auto-correct applied, non-diff lines restored to original.');
+      console.log('RuboCop auto-correct applied per root; non-diff lines restored.');
     } catch (err: any) {
-      console.warn('Failed to run rubocop auto-correct on changed files:', err.message);
+      console.warn('Failed multi-root rubocop auto-correct:', err.message);
     }
   }
 

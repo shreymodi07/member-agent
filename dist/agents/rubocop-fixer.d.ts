@@ -5,6 +5,7 @@ export interface RubocopFixerOptions {
     diffOnly?: boolean;
     staged?: boolean;
     rubyRoot?: string;
+    preview?: boolean;
 }
 export interface RubocopFixerResult {
     totalIterations: number;

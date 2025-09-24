@@ -25,7 +25,8 @@ export class RubocopFixerDiffCommand extends BaseCommand {
       .option('-m, --max-iterations <number>', 'Maximum number of fix iterations', '5')
       .option('--staged', 'Use staged changes (git diff --cached) instead of working tree vs HEAD', false)
   .option('--rubocop-only', 'Run rubocop -A on changed files and keep only corrected lines within diff', false)
-  .option('--ruby-root <dir>', 'Explicit Ruby project root (directory containing Gemfile)', '');
+	.option('--ruby-root <dir>', 'Explicit Ruby project root (directory containing Gemfile)', '')
+    .option('--preview', 'Preview roots/files & changed lines without executing RuboCop', false);
   }
 
   protected setupAction(): void {
@@ -45,7 +46,8 @@ export class RubocopFixerDiffCommand extends BaseCommand {
           diffOnly: true,
           staged: !!options.staged,
           rubocopOnly: !!options.rubocopOnly,
-          rubyRoot: options.rubyRoot || undefined
+          rubyRoot: options.rubyRoot || undefined,
+          preview: !!(options as any).preview
         } as any);
 
         spinner.stop();
