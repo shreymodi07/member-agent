@@ -16,7 +16,7 @@ git add app/serializers/teladoc_registration/registration_serializer.rb
 export PATH="$ROOT/fake_bin:$PATH"
 
 echo "Running teladoc-agent rubocop-fix-diff --rubocop-only"
-node ../../dist/cli.js rubocop-fix-diff --path "$ROOT" --rubocop-only
+node ../dist/cli.js rubocop-fix-diff --path "$ROOT" --rubocop-only
 
 echo "Showing file after run:"
 sed -n '1,120p' app/serializers/teladoc_registration/registration_serializer.rb

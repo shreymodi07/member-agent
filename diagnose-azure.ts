@@ -15,9 +15,9 @@ async function diagnoseAzureOpenAI() {
   const config: AgentConfig = {
     provider: 'azure-openai',
     apiKey: process.env.AZURE_OPENAI_API_KEY || '',
-    azureEndpoint: process.env.AZURE_OPENAI_ENDPOINT || 'https://member-agent-resource.cognitiveservices.azure.com',
-    azureDeployment: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1',
-    azureApiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview'
+    azureEndpoint: process.env.AZURE_OPENAI_ENDPOINT || 'https://member-agents-resource.cognitiveservices.azure.com',
+    azureDeployment: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1-mini',
+    azureApiVersion: process.env.AZURE_OPENAI_API_VERSION || '2025-01-01-preview'
   };
 
   if (!config.apiKey) {

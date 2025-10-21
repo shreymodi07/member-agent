@@ -12,6 +12,7 @@ interface SecurityOptions extends BaseCommandOptions {
   diff?: boolean;
   format?: 'console' | 'json';
   output?: string;
+  tiered?: boolean;
 }
 
 export class SecurityCommand extends BaseCommand {
@@ -25,7 +26,8 @@ export class SecurityCommand extends BaseCommand {
       .option('-f, --file <path>', 'File or directory to scan (default: current directory)')
       .option('--diff', 'Scan only files changed in git diff')
       .option('--format <format>', 'Output format (console|json)', 'console')
-      .option('-o, --output <path>', 'Output file path');
+      .option('-o, --output <path>', 'Output file path')
+      .option('--tiered', 'Use tiered Senior→Staff→Principal security prompt');
   }
 
   protected setupAction(): void {
@@ -36,16 +38,17 @@ export class SecurityCommand extends BaseCommand {
         let filePaths: string[] = [];
 
         if (options.diff) {
-          // Get files from git diff
+          // Get actual diff content, not just file names
           try {
-            const diffOutput = execSync('git diff --name-only', { encoding: 'utf-8' });
-            filePaths = diffOutput.trim().split('\n').filter((file: string) => file.length > 0);
-            if (filePaths.length === 0) {
-              console.log(chalk.yellow('No files changed in git diff.'));
+            const diffOutput = execSync('git diff HEAD', { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+            if (!diffOutput.trim()) {
+              console.log(chalk.yellow('No changes in git diff.'));
               return;
             }
+            // Pass diff content as a special marker
+            filePaths = ['__GIT_DIFF__'];
           } catch (error) {
-            console.error(chalk.red('Error getting git diff files. Make sure you are in a git repository.'));
+            console.error(chalk.red('Error getting git diff. Make sure you are in a git repository.'));
             return;
           }
         } else {
@@ -63,7 +66,8 @@ export class SecurityCommand extends BaseCommand {
           scanType: 'all',
           standard: 'gdpr',
           format: options.format || 'console',
-          outputPath: options.output
+          outputPath: options.output,
+          tiered: !!options.tiered
         });
 
         spinner.succeed('Security scan completed!');

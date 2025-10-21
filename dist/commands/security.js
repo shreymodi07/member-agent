@@ -20,7 +20,8 @@ class SecurityCommand extends base_1.BaseCommand {
             .option('-f, --file <path>', 'File or directory to scan (default: current directory)')
             .option('--diff', 'Scan only files changed in git diff')
             .option('--format <format>', 'Output format (console|json)', 'console')
-            .option('-o, --output <path>', 'Output file path');
+            .option('-o, --output <path>', 'Output file path')
+            .option('--tiered', 'Use tiered Senior→Staff→Principal security prompt');
     }
     setupAction() {
         this.command.action(async (options) => {
@@ -28,17 +29,18 @@ class SecurityCommand extends base_1.BaseCommand {
                 console.log(chalk_1.default.blue('🔒 Teladoc Security Scanner'));
                 let filePaths = [];
                 if (options.diff) {
-                    // Get files from git diff
+                    // Get actual diff content, not just file names
                     try {
-                        const diffOutput = (0, child_process_1.execSync)('git diff --name-only', { encoding: 'utf-8' });
-                        filePaths = diffOutput.trim().split('\n').filter((file) => file.length > 0);
-                        if (filePaths.length === 0) {
-                            console.log(chalk_1.default.yellow('No files changed in git diff.'));
+                        const diffOutput = (0, child_process_1.execSync)('git diff HEAD', { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+                        if (!diffOutput.trim()) {
+                            console.log(chalk_1.default.yellow('No changes in git diff.'));
                             return;
                         }
+                        // Pass diff content as a special marker
+                        filePaths = ['__GIT_DIFF__'];
                     }
                     catch (error) {
-                        console.error(chalk_1.default.red('Error getting git diff files. Make sure you are in a git repository.'));
+                        console.error(chalk_1.default.red('Error getting git diff. Make sure you are in a git repository.'));
                         return;
                     }
                 }
@@ -55,7 +57,8 @@ class SecurityCommand extends base_1.BaseCommand {
                     scanType: 'all',
                     standard: 'gdpr',
                     format: options.format || 'console',
-                    outputPath: options.output
+                    outputPath: options.output,
+                    tiered: !!options.tiered
                 });
                 spinner.succeed('Security scan completed!');
                 if (options.format === 'console') {

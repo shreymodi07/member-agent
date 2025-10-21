@@ -11,6 +11,7 @@ interface CodeReviewOptions extends BaseCommandOptions {
   format?: 'console' | 'json' | 'markdown';
   output?: string;
   changes?: boolean;
+  tiered?: boolean;
 }
 
 export class CodeReviewCommand extends BaseCommand {
@@ -24,13 +25,20 @@ export class CodeReviewCommand extends BaseCommand {
       .option('-f, --file <path>', 'File or directory to review')
       .option('--format <format>', 'Output format (console|json|markdown)', 'console')
       .option('-o, --output <path>', 'Output file path')
-      .option('--changes', 'Review git changes automatically');
+      .option('--changes', 'Review git changes automatically')
+      .option('--tiered', 'Use tiered Senior→Staff→Principal prompt');
   }
 
   protected setupAction(): void {
     this.command.action(async (options: CodeReviewOptions) => {
       try {
-        console.log(chalk.blue('🔍 Teladoc Code Review'));
+        const separator = '='.repeat(80);
+        const thinSeparator = '-'.repeat(80);
+        
+        console.log(chalk.cyan(separator));
+        console.log(chalk.cyan.bold('CODE REVIEW - Principal Engineer Assessment'));
+        console.log(chalk.cyan(separator));
+        console.log('');
 
         // Smart detection: check for git changes first
         if (!options.file) {
@@ -40,11 +48,11 @@ export class CodeReviewCommand extends BaseCommand {
           const changedFiles = await agent.detectChangedFiles();
           
           if (changedFiles.length > 0) {
-            console.log(chalk.green(`✨ Found ${changedFiles.length} changed files:`));
-            changedFiles.forEach((file: string) => console.log(chalk.gray(`  • ${file}`)));
+            console.log(chalk.bold('FILES CHANGED:'), changedFiles.length);
+            changedFiles.forEach((file: string) => console.log(chalk.gray(`  ${file}`)));
+            console.log('');
             
             if (options.changes) {
-              console.log(chalk.blue('🚀 Reviewing changes automatically...'));
               options.file = '.';
             } else {
               const { useChanges } = await inquirer.prompt([
@@ -61,7 +69,7 @@ export class CodeReviewCommand extends BaseCommand {
               }
             }
           } else if (options.changes) {
-            console.log(chalk.yellow('⚠️  No git changes detected.'));
+            console.log('No git changes detected.');
             return;
           }
           
@@ -83,41 +91,78 @@ export class CodeReviewCommand extends BaseCommand {
         const configManager = new ConfigManager();
         const agentConfig = await configManager.getAgentConfig();
         const agent = new CodeReviewAgent(agentConfig);
+        
+        // Get project context for header
+        const context = await agent['analyzeProjectContext'](options.file!);
+        
+        spinner.stop();
+        
+        // Print project info
+        console.log(chalk.bold('PROJECT:'), context.rootPath.split('/').pop() || 'Unknown');
+        if (context.language) console.log(chalk.bold('LANGUAGE:'), context.language);
+        if (context.framework) console.log(chalk.bold('FRAMEWORK:'), context.framework);
+        console.log(chalk.bold('SEVERITY THRESHOLD:'), 'medium');
+        console.log('');
+
+        spinner.start('Running analysis...');
+
         const result = await agent.reviewCode({
           filePath: options.file!,
           severity: 'medium',
           format: options.format || 'console',
-          outputPath: options.output
+          outputPath: options.output,
+          tiered: !!options.tiered
         });
 
-        spinner.succeed('Code review completed!');
+        spinner.stop();
 
         if (options.format === 'console') {
           console.log(result.review);
         } else {
-          console.log(chalk.green(`✅ Review saved to: ${result.outputPath}`));
+          console.log(`Review saved: ${result.outputPath}`);
         }
 
-        if (options.verbose) {
-          console.log(chalk.gray(`📊 Found ${result.issueCount} issues`));
-          console.log(chalk.gray(`⚠️  ${result.criticalCount} critical, ${result.highCount} high priority`));
-        }
-
-        // QA Testing Guidance
-        console.log('\n🧪 QA Testing Guidance:');
+        // Summary section
+        console.log('');
+        console.log(chalk.cyan(separator));
+        console.log(chalk.cyan.bold('SUMMARY'));
+        console.log(chalk.cyan(separator));
+        console.log('');
+        console.log(chalk.bold('Total Issues:'), result.issueCount);
+        console.log(thinSeparator.substring(0, 40));
+        
         if (result.criticalCount > 0) {
-          console.log('• Critical code issues found - test error handling and edge cases thoroughly');
-          console.log('• Verify fixes for potential crashes, data corruption, or system failures');
-          console.log('• Test recovery mechanisms and error recovery scenarios');
-        } else if (result.highCount > 0) {
-          console.log('• Code improvements needed - test functionality with various inputs');
-          console.log('• Focus on performance, reliability, and user experience validation');
-          console.log('• Test integration with other system components');
+          console.log(chalk.red('Critical:'), result.criticalCount);
         } else {
-          console.log('• Code quality looks good - test new features and integration points');
-          console.log('• Verify existing functionality remains unaffected by changes');
-          console.log('• Perform end-to-end testing of the complete user workflow');
+          console.log(chalk.gray('Critical:'), result.criticalCount);
         }
+        
+        if (result.highCount > 0) {
+          console.log(chalk.yellow('High:    '), result.highCount);
+        } else {
+          console.log(chalk.gray('High:    '), result.highCount);
+        }
+        
+        if (result.mediumCount > 0) {
+          console.log(chalk.blue('Medium:  '), result.mediumCount);
+        } else {
+          console.log(chalk.gray('Medium:  '), result.mediumCount);
+        }
+        
+        console.log(chalk.gray('Low:     '), result.lowCount);
+        console.log('');
+        
+        // Status message
+        if (result.criticalCount > 0) {
+          console.log(chalk.red.bold('Status: ✗ Critical issues must be fixed before merge'));
+        } else if (result.highCount > 0) {
+          console.log(chalk.yellow.bold('Status: ⚠ High priority issues should be addressed'));
+        } else if (result.mediumCount > 0) {
+          console.log(chalk.blue.bold('Status: ✓ Safe to merge with recommended improvements'));
+        } else {
+          console.log(chalk.green.bold('Status: ✓ All clear - no issues found'));
+        }
+        console.log('');
 
       } catch (error) {
         this.handleError(error as Error, options);

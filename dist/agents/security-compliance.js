@@ -13,11 +13,27 @@ class SecurityComplianceAgent {
     }
     async scanSecurity(options) {
         const startTime = Date.now();
-        // Read and analyze code
-        const { codeContent, fileCount } = await this.readCodeForSecurity(options.filePaths);
-        const context = await this.analyzeProjectContext(options.filePaths[0] || '.');
-        // Perform security analysis
-        const securityReport = await this.performSecurityAnalysis(codeContent, context, options.scanType, options.standard);
+        // Check if this is a git diff scan
+        const isDiffScan = options.filePaths.length === 1 && options.filePaths[0] === '__GIT_DIFF__';
+        let codeContent;
+        let fileCount;
+        if (isDiffScan) {
+            // Read git diff directly
+            const { execSync } = require('child_process');
+            codeContent = execSync('git diff HEAD', { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+            fileCount = (codeContent.match(/^diff --git/gm) || []).length;
+        }
+        else {
+            // Read and analyze code files
+            const result = await this.readCodeForSecurity(options.filePaths);
+            codeContent = result.codeContent;
+            fileCount = result.fileCount;
+        }
+        const context = await this.analyzeProjectContext(isDiffScan ? '.' : options.filePaths[0] || '.');
+        // Perform security analysis - always use concise format for diff scans
+        const securityReport = isDiffScan || options.tiered
+            ? await this.performConciseSecurityAnalysis(codeContent, context, options.scanType, options.standard, isDiffScan)
+            : await this.performSecurityAnalysis(codeContent, context, options.scanType, options.standard);
         // Parse security issues
         const issues = await this.parseSecurityIssues(securityReport);
         // Format output
@@ -51,21 +67,25 @@ class SecurityComplianceAgent {
     }
     async readCodeForSecurity(filePaths) {
         const allFiles = [];
-        let totalFileCount = 0;
+        const MAX_FILE_SIZE = 1024 * 1024; // 1MB per file
+        const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
+        let totalSize = 0;
         for (const filePath of filePaths) {
             try {
-                const stats = await fs_extra_1.default.stat(filePath);
+                const realPath = await fs_extra_1.default.realpath(filePath);
+                const stats = await fs_extra_1.default.stat(realPath);
                 if (stats.isDirectory()) {
-                    const files = await this.getSecurityRelevantFiles(filePath);
+                    const files = await this.getSecurityRelevantFiles(realPath);
                     allFiles.push(...files);
                 }
                 else {
-                    allFiles.push(filePath);
+                    allFiles.push(realPath);
                 }
             }
             catch (error) {
                 if (error.code === 'ENOENT') {
-                    console.warn(`Warning: File or directory not found: ${filePath}`);
+                    // Silently skip missing files/symlinks
+                    continue;
                 }
                 else {
                     throw error;
@@ -74,19 +94,34 @@ class SecurityComplianceAgent {
         }
         // Remove duplicates
         const uniqueFiles = [...new Set(allFiles)];
-        const contents = await Promise.all(uniqueFiles.map(async (file) => {
+        const contents = [];
+        let filesProcessed = 0;
+        for (const file of uniqueFiles) {
             try {
+                const stats = await fs_extra_1.default.stat(file);
+                // Skip files that are too large
+                if (stats.size > MAX_FILE_SIZE) {
+                    console.warn(`Warning: Skipping large file ${file} (${Math.round(stats.size / 1024)}KB)`);
+                    continue;
+                }
+                // Check if we're approaching the total size limit
+                if (totalSize + stats.size > MAX_TOTAL_SIZE) {
+                    console.warn(`Warning: Reached maximum content size limit. Scanned ${filesProcessed} files.`);
+                    break;
+                }
                 const content = await fs_extra_1.default.readFile(file, 'utf-8');
-                return `// File: ${file}\n${content}\n`;
+                contents.push(`// File: ${file}\n${content}\n`);
+                totalSize += stats.size;
+                filesProcessed++;
             }
             catch (error) {
-                console.warn(`Warning: Could not read file ${file}: ${error.message}`);
-                return '';
+                // Silently skip files we can't read
+                continue;
             }
-        }));
+        }
         return {
             codeContent: contents.join('\n'),
-            fileCount: uniqueFiles.length
+            fileCount: filesProcessed
         };
     }
     async getSecurityRelevantFiles(dirPath) {
@@ -96,46 +131,57 @@ class SecurityComplianceAgent {
             entries = await fs_extra_1.default.readdir(dirPath);
         }
         catch (error) {
-            console.warn(`Warning: Could not read directory ${dirPath}: ${error.message}`);
+            // Silently skip directories we can't read
             return files;
         }
         for (const entry of entries) {
             const fullPath = path_1.default.join(dirPath, entry);
             try {
-                const stats = await fs_extra_1.default.stat(fullPath);
+                // Use lstat to detect symlinks without following them
+                const stats = await fs_extra_1.default.lstat(fullPath);
+                // Skip symlinks to avoid broken references
+                if (stats.isSymbolicLink()) {
+                    continue;
+                }
                 if (stats.isDirectory() && !this.isIgnoredDirectory(entry)) {
                     const subFiles = await this.getSecurityRelevantFiles(fullPath);
                     files.push(...subFiles);
                 }
-                else if (this.isSecurityRelevantFile(entry)) {
+                else if (stats.isFile() && this.isSecurityRelevantFile(entry)) {
                     files.push(fullPath);
                 }
             }
             catch (error) {
-                if (error.code === 'ENOENT') {
-                    console.warn(`Warning: File not found, skipping ${fullPath}`);
-                }
-                else {
-                    console.warn(`Warning: Could not stat ${fullPath}: ${error.message}`);
-                }
+                // Silently skip files/directories we can't access
+                continue;
             }
         }
         return files;
     }
     isIgnoredDirectory(dirName) {
-        const ignored = ['.git', 'node_modules', 'dist', 'build', '.next', 'coverage'];
+        const ignored = [
+            '.git', 'node_modules', 'dist', 'build', '.next', 'coverage',
+            'vendor', 'tmp', 'temp', 'cache', '.cache', 'public/packs',
+            'log', 'logs', 'test', 'spec', '__tests__', '.bundle'
+        ];
         return ignored.includes(dirName) || dirName.startsWith('.');
     }
     isSecurityRelevantFile(filename) {
         const securityExtensions = [
-            '.ts', '.js', '.tsx', '.jsx', '.py', '.java', '.cs', '.go', '.rs', '.php',
-            '.json', '.yaml', '.yml', '.env', '.config', '.ini', '.properties'
+            '.ts', '.js', '.tsx', '.jsx', '.py', '.java', '.cs', '.go', '.rs', '.php', '.rb',
+            '.json', '.yaml', '.yml', '.env', '.config', '.ini', '.properties', '.xml'
         ];
         const securityFiles = [
             'package.json', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
-            'requirements.txt', 'Pipfile', 'Dockerfile', 'docker-compose.yml',
+            'requirements.txt', 'Pipfile', 'Gemfile', 'Gemfile.lock',
+            'Dockerfile', 'docker-compose.yml',
             '.env', '.env.local', '.env.production', 'web.config', 'app.config'
         ];
+        // Skip test files
+        if (filename.includes('.test.') || filename.includes('.spec.') ||
+            filename.includes('_test.') || filename.includes('_spec.')) {
+            return false;
+        }
         return securityExtensions.some(ext => filename.endsWith(ext)) ||
             securityFiles.includes(filename);
     }
@@ -238,6 +284,70 @@ Focus on:
 Output the results in structured format with clear severity classification.
 `;
         return await this.aiProvider.generateText(prompt);
+    }
+    async performConciseSecurityAnalysis(codeContent, context, scanType, standard, isDiffScan) {
+        const prompt = `You are a security expert analyzing ${isDiffScan ? 'git diff changes' : 'code'} for ${standard.toUpperCase()} compliance vulnerabilities.
+
+${isDiffScan ? 'GIT DIFF:' : 'CODE:'}
+\`\`\`
+${codeContent}
+\`\`\`
+
+Provide ONLY a concise table of vulnerabilities found. Be brief and precise.
+
+Format each finding as:
+| Severity | CWE | File | Lines | Issue | Fix |
+|----------|-----|------|-------|-------|-----|
+| Critical/High/Medium/Low | CWE-XXX | path/to/file | 10-15 | Brief issue description | Brief fix |
+
+Focus on:
+- SQL Injection (CWE-89)
+- XSS (CWE-79)
+- Authentication bypass (CWE-287)
+- Authorization flaws (CWE-285)
+- Sensitive data exposure (CWE-200)
+- Hardcoded secrets (CWE-798)
+- GDPR violations (data handling, consent, logging PII)
+
+Skip:
+- Style/formatting issues
+- Non-security code quality issues
+- Theoretical vulnerabilities without evidence
+
+Output ONLY the table. No explanations, no summaries, no extra text.`;
+        return await this.aiProvider.generateText(prompt);
+    }
+    async performTieredSecurityAnalysis(codeContent, context, scanType, standard) {
+        return this.performConciseSecurityAnalysis(codeContent, context, scanType, standard, false);
+    }
+    extractFilesFromContent(codeContent) {
+        const files = [];
+        const re = /^\/\/ File:\s*(.+)$/gm;
+        let m;
+        while ((m = re.exec(codeContent)) !== null) {
+            const f = m[1].trim();
+            if (f && !files.includes(f))
+                files.push(f);
+        }
+        return files;
+    }
+    extractDiffSections(codeContent) {
+        const lines = codeContent.split('\n');
+        const chunks = [];
+        let collecting = false;
+        for (const line of lines) {
+            if (line.startsWith('// Git Changes:')) {
+                collecting = true;
+                continue;
+            }
+            if (collecting && line.startsWith('// Full Content:')) {
+                collecting = false;
+                continue;
+            }
+            if (collecting)
+                chunks.push(line);
+        }
+        return chunks.join('\n').trim();
     }
     getScanTypeInstructions(scanType) {
         switch (scanType) {

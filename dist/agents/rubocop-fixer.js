@@ -204,6 +204,20 @@ class RubocopFixerAgent {
                     }
                     await fs_extra_1.default.writeFile(info.abs, newContent.join('\n'));
                 }
+                // After merging, run rubocop in check mode to report remaining offenses for these files
+                try {
+                    console.log(`Running RuboCop check in ${root} to verify remaining offenses...`);
+                    const checkCmd = `cd ${root} && bundle exec rubocop ${fileArgs}`;
+                    const checkOutput = (0, child_process_1.execSync)(checkCmd, { encoding: 'utf-8' });
+                    // If rubocop exits 0, no offenses
+                    console.log(`✅ RuboCop check passed for root ${root} (no offenses for selected files).`);
+                }
+                catch (err) {
+                    // rubocop returns non-zero when offenses remain; print output
+                    const msg = err.stdout || err.stderr || (err.message ? err.message : 'Unknown error');
+                    console.log(`⚠ RuboCop found remaining offenses in root ${root}:`);
+                    console.log(msg.trim());
+                }
             }
             console.log('RuboCop auto-correct applied per root; non-diff lines restored.');
         }

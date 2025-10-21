@@ -20,12 +20,18 @@ class CodeReviewCommand extends base_1.BaseCommand {
             .option('-f, --file <path>', 'File or directory to review')
             .option('--format <format>', 'Output format (console|json|markdown)', 'console')
             .option('-o, --output <path>', 'Output file path')
-            .option('--changes', 'Review git changes automatically');
+            .option('--changes', 'Review git changes automatically')
+            .option('--tiered', 'Use tiered Senior→Staff→Principal prompt');
     }
     setupAction() {
         this.command.action(async (options) => {
             try {
-                console.log(chalk_1.default.blue('🔍 Teladoc Code Review'));
+                const separator = '='.repeat(80);
+                const thinSeparator = '-'.repeat(80);
+                console.log(chalk_1.default.cyan(separator));
+                console.log(chalk_1.default.cyan.bold('CODE REVIEW - Principal Engineer Assessment'));
+                console.log(chalk_1.default.cyan(separator));
+                console.log('');
                 // Smart detection: check for git changes first
                 if (!options.file) {
                     const configManager = new manager_1.ConfigManager();
@@ -33,10 +39,10 @@ class CodeReviewCommand extends base_1.BaseCommand {
                     const agent = new code_review_1.CodeReviewAgent(agentConfig);
                     const changedFiles = await agent.detectChangedFiles();
                     if (changedFiles.length > 0) {
-                        console.log(chalk_1.default.green(`✨ Found ${changedFiles.length} changed files:`));
-                        changedFiles.forEach((file) => console.log(chalk_1.default.gray(`  • ${file}`)));
+                        console.log(chalk_1.default.bold('FILES CHANGED:'), changedFiles.length);
+                        changedFiles.forEach((file) => console.log(chalk_1.default.gray(`  ${file}`)));
+                        console.log('');
                         if (options.changes) {
-                            console.log(chalk_1.default.blue('🚀 Reviewing changes automatically...'));
                             options.file = '.';
                         }
                         else {
@@ -54,7 +60,7 @@ class CodeReviewCommand extends base_1.BaseCommand {
                         }
                     }
                     else if (options.changes) {
-                        console.log(chalk_1.default.yellow('⚠️  No git changes detected.'));
+                        console.log('No git changes detected.');
                         return;
                     }
                     if (!options.file) {
@@ -73,40 +79,74 @@ class CodeReviewCommand extends base_1.BaseCommand {
                 const configManager = new manager_1.ConfigManager();
                 const agentConfig = await configManager.getAgentConfig();
                 const agent = new code_review_1.CodeReviewAgent(agentConfig);
+                // Get project context for header
+                const context = await agent['analyzeProjectContext'](options.file);
+                spinner.stop();
+                // Print project info
+                console.log(chalk_1.default.bold('PROJECT:'), context.rootPath.split('/').pop() || 'Unknown');
+                if (context.language)
+                    console.log(chalk_1.default.bold('LANGUAGE:'), context.language);
+                if (context.framework)
+                    console.log(chalk_1.default.bold('FRAMEWORK:'), context.framework);
+                console.log(chalk_1.default.bold('SEVERITY THRESHOLD:'), 'medium');
+                console.log('');
+                spinner.start('Running analysis...');
                 const result = await agent.reviewCode({
                     filePath: options.file,
                     severity: 'medium',
                     format: options.format || 'console',
-                    outputPath: options.output
+                    outputPath: options.output,
+                    tiered: !!options.tiered
                 });
-                spinner.succeed('Code review completed!');
+                spinner.stop();
                 if (options.format === 'console') {
                     console.log(result.review);
                 }
                 else {
-                    console.log(chalk_1.default.green(`✅ Review saved to: ${result.outputPath}`));
+                    console.log(`Review saved: ${result.outputPath}`);
                 }
-                if (options.verbose) {
-                    console.log(chalk_1.default.gray(`📊 Found ${result.issueCount} issues`));
-                    console.log(chalk_1.default.gray(`⚠️  ${result.criticalCount} critical, ${result.highCount} high priority`));
-                }
-                // QA Testing Guidance
-                console.log('\n🧪 QA Testing Guidance:');
+                // Summary section
+                console.log('');
+                console.log(chalk_1.default.cyan(separator));
+                console.log(chalk_1.default.cyan.bold('SUMMARY'));
+                console.log(chalk_1.default.cyan(separator));
+                console.log('');
+                console.log(chalk_1.default.bold('Total Issues:'), result.issueCount);
+                console.log(thinSeparator.substring(0, 40));
                 if (result.criticalCount > 0) {
-                    console.log('• Critical code issues found - test error handling and edge cases thoroughly');
-                    console.log('• Verify fixes for potential crashes, data corruption, or system failures');
-                    console.log('• Test recovery mechanisms and error recovery scenarios');
-                }
-                else if (result.highCount > 0) {
-                    console.log('• Code improvements needed - test functionality with various inputs');
-                    console.log('• Focus on performance, reliability, and user experience validation');
-                    console.log('• Test integration with other system components');
+                    console.log(chalk_1.default.red('Critical:'), result.criticalCount);
                 }
                 else {
-                    console.log('• Code quality looks good - test new features and integration points');
-                    console.log('• Verify existing functionality remains unaffected by changes');
-                    console.log('• Perform end-to-end testing of the complete user workflow');
+                    console.log(chalk_1.default.gray('Critical:'), result.criticalCount);
                 }
+                if (result.highCount > 0) {
+                    console.log(chalk_1.default.yellow('High:    '), result.highCount);
+                }
+                else {
+                    console.log(chalk_1.default.gray('High:    '), result.highCount);
+                }
+                if (result.mediumCount > 0) {
+                    console.log(chalk_1.default.blue('Medium:  '), result.mediumCount);
+                }
+                else {
+                    console.log(chalk_1.default.gray('Medium:  '), result.mediumCount);
+                }
+                console.log(chalk_1.default.gray('Low:     '), result.lowCount);
+                console.log('');
+                // Status message
+                if (result.criticalCount > 0) {
+                    console.log(chalk_1.default.red.bold('Status: ✗ Critical issues must be fixed before merge'));
+                }
+                else if (result.highCount > 0) {
+                    console.log(chalk_1.default.yellow.bold('Status: ⚠ High priority issues should be addressed'));
+                }
+                else if (result.mediumCount > 0) {
+                    console.log(chalk_1.default.blue.bold('Status: ✓ Safe to merge with recommended improvements'));
+                }
+                else {
+                    console.log(chalk_1.default.green.bold('Status: ✓ All clear - no issues found'));
+                }
+                console.log('');
             }
             catch (error) {
                 this.handleError(error, options);

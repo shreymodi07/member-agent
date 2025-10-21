@@ -17,9 +17,9 @@ class ConfigManager {
             packageManager: 'npm',
             outputDir: './output',
             templatesDir: './templates',
-            azureEndpoint: 'https://member-agent-resource.cognitiveservices.azure.com',
-            azureDeployment: 'gpt-4.1',
-            azureApiVersion: '2024-02-15-preview'
+            azureEndpoint: 'https://member-agents-resource.cognitiveservices.azure.com',
+            azureDeployment: 'gpt-4.1-mini',
+            azureApiVersion: '2025-01-01-preview'
         };
     }
     async get(key) {

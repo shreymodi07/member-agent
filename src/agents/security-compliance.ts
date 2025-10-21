@@ -9,6 +9,7 @@ export interface SecurityScanOptions {
   standard: 'hipaa' | 'sox' | 'pci' | 'gdpr';
   format: 'console' | 'json' | 'sarif';
   outputPath?: string;
+  tiered?: boolean;
 }
 
 export interface SecurityScanResult {
@@ -46,17 +47,30 @@ export class SecurityComplianceAgent {
   async scanSecurity(options: SecurityScanOptions): Promise<SecurityScanResult> {
     const startTime = Date.now();
     
-    // Read and analyze code
-    const { codeContent, fileCount } = await this.readCodeForSecurity(options.filePaths);
-    const context = await this.analyzeProjectContext(options.filePaths[0] || '.');
+    // Check if this is a git diff scan
+    const isDiffScan = options.filePaths.length === 1 && options.filePaths[0] === '__GIT_DIFF__';
     
-    // Perform security analysis
-    const securityReport = await this.performSecurityAnalysis(
-      codeContent,
-      context,
-      options.scanType,
-      options.standard
-    );
+    let codeContent: string;
+    let fileCount: number;
+    
+    if (isDiffScan) {
+      // Read git diff directly
+      const { execSync } = require('child_process');
+      codeContent = execSync('git diff HEAD', { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+      fileCount = (codeContent.match(/^diff --git/gm) || []).length;
+    } else {
+      // Read and analyze code files
+      const result = await this.readCodeForSecurity(options.filePaths);
+      codeContent = result.codeContent;
+      fileCount = result.fileCount;
+    }
+    
+    const context = await this.analyzeProjectContext(isDiffScan ? '.' : options.filePaths[0] || '.');
+    
+    // Perform security analysis - always use concise format for diff scans
+    const securityReport = isDiffScan || options.tiered
+      ? await this.performConciseSecurityAnalysis(codeContent, context, options.scanType, options.standard, isDiffScan)
+      : await this.performSecurityAnalysis(codeContent, context, options.scanType, options.standard);
     
     // Parse security issues
     const issues = await this.parseSecurityIssues(securityReport);
@@ -101,21 +115,25 @@ export class SecurityComplianceAgent {
 
   private async readCodeForSecurity(filePaths: string[]): Promise<{ codeContent: string; fileCount: number }> {
     const allFiles: string[] = [];
-    let totalFileCount = 0;
+    const MAX_FILE_SIZE = 1024 * 1024; // 1MB per file
+    const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
+    let totalSize = 0;
 
     for (const filePath of filePaths) {
       try {
-        const stats = await fs.stat(filePath);
+        const realPath = await fs.realpath(filePath);
+        const stats = await fs.stat(realPath);
         
         if (stats.isDirectory()) {
-          const files = await this.getSecurityRelevantFiles(filePath);
+          const files = await this.getSecurityRelevantFiles(realPath);
           allFiles.push(...files);
         } else {
-          allFiles.push(filePath);
+          allFiles.push(realPath);
         }
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-          console.warn(`Warning: File or directory not found: ${filePath}`);
+          // Silently skip missing files/symlinks
+          continue;
         } else {
           throw error;
         }
@@ -125,21 +143,38 @@ export class SecurityComplianceAgent {
     // Remove duplicates
     const uniqueFiles = [...new Set(allFiles)];
 
-    const contents = await Promise.all(
-      uniqueFiles.map(async (file) => {
-        try {
-          const content = await fs.readFile(file, 'utf-8');
-          return `// File: ${file}\n${content}\n`;
-        } catch (error) {
-          console.warn(`Warning: Could not read file ${file}: ${(error as Error).message}`);
-          return '';
+    const contents: string[] = [];
+    let filesProcessed = 0;
+
+    for (const file of uniqueFiles) {
+      try {
+        const stats = await fs.stat(file);
+        
+        // Skip files that are too large
+        if (stats.size > MAX_FILE_SIZE) {
+          console.warn(`Warning: Skipping large file ${file} (${Math.round(stats.size / 1024)}KB)`);
+          continue;
         }
-      })
-    );
+
+        // Check if we're approaching the total size limit
+        if (totalSize + stats.size > MAX_TOTAL_SIZE) {
+          console.warn(`Warning: Reached maximum content size limit. Scanned ${filesProcessed} files.`);
+          break;
+        }
+
+        const content = await fs.readFile(file, 'utf-8');
+        contents.push(`// File: ${file}\n${content}\n`);
+        totalSize += stats.size;
+        filesProcessed++;
+      } catch (error) {
+        // Silently skip files we can't read
+        continue;
+      }
+    }
 
     return {
       codeContent: contents.join('\n'),
-      fileCount: uniqueFiles.length
+      fileCount: filesProcessed
     };
   }
 
@@ -149,27 +184,30 @@ export class SecurityComplianceAgent {
     try {
       entries = await fs.readdir(dirPath);
     } catch (error) {
-      console.warn(`Warning: Could not read directory ${dirPath}: ${(error as Error).message}`);
+      // Silently skip directories we can't read
       return files;
     }
 
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry);
       try {
-        const stats = await fs.stat(fullPath);
+        // Use lstat to detect symlinks without following them
+        const stats = await fs.lstat(fullPath);
+
+        // Skip symlinks to avoid broken references
+        if (stats.isSymbolicLink()) {
+          continue;
+        }
 
         if (stats.isDirectory() && !this.isIgnoredDirectory(entry)) {
           const subFiles = await this.getSecurityRelevantFiles(fullPath);
           files.push(...subFiles);
-        } else if (this.isSecurityRelevantFile(entry)) {
+        } else if (stats.isFile() && this.isSecurityRelevantFile(entry)) {
           files.push(fullPath);
         }
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-          console.warn(`Warning: File not found, skipping ${fullPath}`);
-        } else {
-          console.warn(`Warning: Could not stat ${fullPath}: ${(error as Error).message}`);
-        }
+        // Silently skip files/directories we can't access
+        continue;
       }
     }
 
@@ -177,21 +215,32 @@ export class SecurityComplianceAgent {
   }
 
   private isIgnoredDirectory(dirName: string): boolean {
-    const ignored = ['.git', 'node_modules', 'dist', 'build', '.next', 'coverage'];
+    const ignored = [
+      '.git', 'node_modules', 'dist', 'build', '.next', 'coverage',
+      'vendor', 'tmp', 'temp', 'cache', '.cache', 'public/packs',
+      'log', 'logs', 'test', 'spec', '__tests__', '.bundle'
+    ];
     return ignored.includes(dirName) || dirName.startsWith('.');
   }
 
   private isSecurityRelevantFile(filename: string): boolean {
     const securityExtensions = [
-      '.ts', '.js', '.tsx', '.jsx', '.py', '.java', '.cs', '.go', '.rs', '.php',
-      '.json', '.yaml', '.yml', '.env', '.config', '.ini', '.properties'
+      '.ts', '.js', '.tsx', '.jsx', '.py', '.java', '.cs', '.go', '.rs', '.php', '.rb',
+      '.json', '.yaml', '.yml', '.env', '.config', '.ini', '.properties', '.xml'
     ];
     
     const securityFiles = [
       'package.json', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
-      'requirements.txt', 'Pipfile', 'Dockerfile', 'docker-compose.yml',
+      'requirements.txt', 'Pipfile', 'Gemfile', 'Gemfile.lock',
+      'Dockerfile', 'docker-compose.yml',
       '.env', '.env.local', '.env.production', 'web.config', 'app.config'
     ];
+
+    // Skip test files
+    if (filename.includes('.test.') || filename.includes('.spec.') || 
+        filename.includes('_test.') || filename.includes('_spec.')) {
+      return false;
+    }
 
     return securityExtensions.some(ext => filename.endsWith(ext)) ||
            securityFiles.includes(filename);
@@ -304,6 +353,78 @@ Output the results in structured format with clear severity classification.
 `;
 
     return await this.aiProvider.generateText(prompt);
+  }
+
+  private async performConciseSecurityAnalysis(
+    codeContent: string,
+    context: ProjectContext,
+    scanType: string,
+    standard: string,
+    isDiffScan: boolean
+  ): Promise<string> {
+    const prompt = `You are a security expert analyzing ${isDiffScan ? 'git diff changes' : 'code'} for ${standard.toUpperCase()} compliance vulnerabilities.
+
+${isDiffScan ? 'GIT DIFF:' : 'CODE:'}
+\`\`\`
+${codeContent}
+\`\`\`
+
+Provide ONLY a concise table of vulnerabilities found. Be brief and precise.
+
+Format each finding as:
+| Severity | CWE | File | Lines | Issue | Fix |
+|----------|-----|------|-------|-------|-----|
+| Critical/High/Medium/Low | CWE-XXX | path/to/file | 10-15 | Brief issue description | Brief fix |
+
+Focus on:
+- SQL Injection (CWE-89)
+- XSS (CWE-79)
+- Authentication bypass (CWE-287)
+- Authorization flaws (CWE-285)
+- Sensitive data exposure (CWE-200)
+- Hardcoded secrets (CWE-798)
+- GDPR violations (data handling, consent, logging PII)
+
+Skip:
+- Style/formatting issues
+- Non-security code quality issues
+- Theoretical vulnerabilities without evidence
+
+Output ONLY the table. No explanations, no summaries, no extra text.`;
+
+    return await this.aiProvider.generateText(prompt);
+  }
+
+  private async performTieredSecurityAnalysis(
+    codeContent: string,
+    context: ProjectContext,
+    scanType: string,
+    standard: string
+  ): Promise<string> {
+    return this.performConciseSecurityAnalysis(codeContent, context, scanType, standard, false);
+  }
+
+  private extractFilesFromContent(codeContent: string): string[] {
+    const files: string[] = [];
+    const re = /^\/\/ File:\s*(.+)$/gm;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(codeContent)) !== null) {
+      const f = m[1].trim();
+      if (f && !files.includes(f)) files.push(f);
+    }
+    return files;
+  }
+
+  private extractDiffSections(codeContent: string): string {
+    const lines = codeContent.split('\n');
+    const chunks: string[] = [];
+    let collecting = false;
+    for (const line of lines) {
+      if (line.startsWith('// Git Changes:')) { collecting = true; continue; }
+      if (collecting && line.startsWith('// Full Content:')) { collecting = false; continue; }
+      if (collecting) chunks.push(line);
+    }
+    return chunks.join('\n').trim();
   }
 
   private getScanTypeInstructions(scanType: string): string {

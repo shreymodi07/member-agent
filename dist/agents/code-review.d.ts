@@ -5,6 +5,7 @@ export interface CodeReviewOptions {
     severity: 'low' | 'medium' | 'high' | 'critical';
     format: 'console' | 'json' | 'markdown';
     outputPath?: string;
+    tiered?: boolean;
 }
 export interface CodeReviewResult {
     review: string;
@@ -38,6 +39,9 @@ export declare class CodeReviewAgent {
     private detectFramework;
     private detectPackageManager;
     private generateCodeReview;
+    private buildTieredCodeReviewPrompt;
+    private extractFilesFromContent;
+    private extractDiffSections;
     private parseReviewIssues;
     private formatReview;
     private getDefaultOutputPath;

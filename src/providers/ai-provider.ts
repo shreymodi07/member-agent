@@ -21,8 +21,8 @@ export class AIProvider {
       provider: provider,
       baseUrl: config?.baseUrl || '',
       azureEndpoint: config?.azureEndpoint || process.env.AZURE_OPENAI_ENDPOINT || '',
-      azureDeployment: config?.azureDeployment || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1',
-      azureApiVersion: config?.azureApiVersion || process.env.AZURE_OPENAI_API_VERSION || '2024-02-15-preview'
+      azureDeployment: config?.azureDeployment || process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4.1-mini',
+      azureApiVersion: config?.azureApiVersion || process.env.AZURE_OPENAI_API_VERSION || '2025-01-01-preview'
     };
 
     // Enforce Azure model naming expectation
@@ -38,7 +38,7 @@ export class AIProvider {
       // For Azure OpenAI, the baseURL should be just the resource endpoint
       // The SDK will automatically append /openai/deployments/{deployment}/chat/completions
       const azureBaseUrl = this.config.azureEndpoint?.replace(/\/openai.*$/, '') ||
-                          'https://member-agent-resource.cognitiveservices.azure.com';
+                          'https://member-agents-resource.cognitiveservices.azure.com';
 
       console.log('🔧 Azure OpenAI Configuration:');
       console.log(`   Raw Endpoint: ${this.config.azureEndpoint}`);

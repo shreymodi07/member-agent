@@ -186,13 +186,13 @@ export class ConfigCommand extends BaseCommand {
         type: 'input',
         name: 'azureEndpoint',
         message: 'Azure OpenAI endpoint URL:',
-        default: 'https://member-agent-resource.cognitiveservices.azure.com'
+        default: 'https://member-agents-resource.cognitiveservices.azure.com'
       },
       {
         type: 'input',
         name: 'azureDeployment',
         message: 'Azure deployment name:',
-        default: 'gpt-4.1'
+        default: 'gpt-4.1-mini'
       },
       {
         type: 'input',

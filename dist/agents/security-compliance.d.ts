@@ -5,6 +5,7 @@ export interface SecurityScanOptions {
     standard: 'hipaa' | 'sox' | 'pci' | 'gdpr';
     format: 'console' | 'json' | 'sarif';
     outputPath?: string;
+    tiered?: boolean;
 }
 export interface SecurityScanResult {
     report: string;
@@ -43,6 +44,10 @@ export declare class SecurityComplianceAgent {
     private detectFramework;
     private detectPackageManager;
     private performSecurityAnalysis;
+    private performConciseSecurityAnalysis;
+    private performTieredSecurityAnalysis;
+    private extractFilesFromContent;
+    private extractDiffSections;
     private getScanTypeInstructions;
     private getComplianceInstructions;
     private parseSecurityIssues;

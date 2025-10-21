@@ -24,7 +24,7 @@ async function setupAzureOpenAI() {
       type: 'input',
       name: 'endpoint',
       message: 'Enter your Azure OpenAI endpoint URL:',
-      default: 'https://member-agent-resource.cognitiveservices.azure.com',
+      default: 'https://member-agents-resource.cognitiveservices.azure.com',
       validate: (input: string) => {
         if (!input.includes('openai.azure.com') && !input.includes('cognitiveservices.azure.com')) {
           return 'Invalid Azure endpoint format. Should contain "openai.azure.com" or "cognitiveservices.azure.com"';

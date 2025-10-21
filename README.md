@@ -167,9 +167,9 @@ teladoc-agent config --list
 
 # Configure Azure OpenAI (provider already fixed to azure-openai)
 teladoc-agent config --set provider --value azure-openai
-teladoc-agent config --set azureEndpoint --value https://member-agent-resource.cognitiveservices.azure.com
-teladoc-agent config --set azureDeployment --value gpt-4.1
-teladoc-agent config --set azureApiVersion --value 2024-02-15-preview
+teladoc-agent config --set azureEndpoint --value https://member-agents-resource.cognitiveservices.azure.com
+teladoc-agent config --set azureDeployment --value gpt-4.1-mini
+teladoc-agent config --set azureApiVersion --value 2025-01-01-preview
 teladoc-agent config --set apiKey --value your-azure-api-key
 
 # Reset to defaults
@@ -183,9 +183,9 @@ You can also set configuration via environment variables:
 ```bash
 # Azure OpenAI
 export AZURE_OPENAI_API_KEY=your-azure-key
-export AZURE_OPENAI_ENDPOINT=https://member-agent-resource.cognitiveservices.azure.com
-export AZURE_OPENAI_DEPLOYMENT=gpt-4.1
-export AZURE_OPENAI_API_VERSION=2024-02-15-preview
+export AZURE_OPENAI_ENDPOINT=https://member-agents-resource.cognitiveservices.azure.com
+export AZURE_OPENAI_DEPLOYMENT=gpt-4.1-mini
+export AZURE_OPENAI_API_VERSION=2025-01-01-preview
 ```
 
 ### Spec Coverage Analysis

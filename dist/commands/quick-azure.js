@@ -37,8 +37,8 @@ class QuickAzureCommand extends base_1.BaseCommand {
                 const defaults = {
                     provider: 'azure-openai',
                     model: 'gpt-4.1',
-                    azureEndpoint: 'https://member-agent-resource.cognitiveservices.azure.com',
-                    azureDeployment: 'gpt-4.1',
+                    azureEndpoint: 'https://member-agents-resource.cognitiveservices.azure.com',
+                    azureDeployment: 'gpt-4.1-mini',
                     azureApiVersion: '2025-01-01-preview'
                 };
                 await configManager.set('provider', defaults.provider);
