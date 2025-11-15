@@ -1,4 +1,4 @@
-import { BaseCommand } from './base';
+import { BaseCommand } from './base.js';
 export declare class CodeReviewCommand extends BaseCommand {
     constructor();
     protected setupOptions(): void;

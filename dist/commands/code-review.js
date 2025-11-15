@@ -1,16 +1,10 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.CodeReviewCommand = void 0;
-const base_1 = require("./base");
-const chalk_1 = __importDefault(require("chalk"));
-const inquirer_1 = __importDefault(require("inquirer"));
-const ora_1 = __importDefault(require("ora"));
-const code_review_1 = require("../agents/code-review");
-const manager_1 = require("../config/manager");
-class CodeReviewCommand extends base_1.BaseCommand {
+import { BaseCommand } from './base.js';
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import ora from 'ora';
+import { CodeReviewAgent } from '../agents/code-review.js';
+import { ConfigManager } from '../config/manager.js';
+export class CodeReviewCommand extends BaseCommand {
     constructor() {
         super('review', 'AI-powered code review');
     }
@@ -28,25 +22,25 @@ class CodeReviewCommand extends base_1.BaseCommand {
             try {
                 const separator = '='.repeat(80);
                 const thinSeparator = '-'.repeat(80);
-                console.log(chalk_1.default.cyan(separator));
-                console.log(chalk_1.default.cyan.bold('CODE REVIEW - Principal Engineer Assessment'));
-                console.log(chalk_1.default.cyan(separator));
+                console.log(chalk.cyan(separator));
+                console.log(chalk.cyan.bold('CODE REVIEW - Principal Engineer Assessment'));
+                console.log(chalk.cyan(separator));
                 console.log('');
                 // Smart detection: check for git changes first
                 if (!options.file) {
-                    const configManager = new manager_1.ConfigManager();
+                    const configManager = new ConfigManager();
                     const agentConfig = await configManager.getAgentConfig();
-                    const agent = new code_review_1.CodeReviewAgent(agentConfig);
+                    const agent = new CodeReviewAgent(agentConfig);
                     const changedFiles = await agent.detectChangedFiles();
                     if (changedFiles.length > 0) {
-                        console.log(chalk_1.default.bold('FILES CHANGED:'), changedFiles.length);
-                        changedFiles.forEach((file) => console.log(chalk_1.default.gray(`  ${file}`)));
+                        console.log(chalk.bold('FILES CHANGED:'), changedFiles.length);
+                        changedFiles.forEach((file) => console.log(chalk.gray(`  ${file}`)));
                         console.log('');
                         if (options.changes) {
                             options.file = '.';
                         }
                         else {
-                            const { useChanges } = await inquirer_1.default.prompt([
+                            const { useChanges } = await inquirer.prompt([
                                 {
                                     type: 'confirm',
                                     name: 'useChanges',
@@ -64,7 +58,7 @@ class CodeReviewCommand extends base_1.BaseCommand {
                         return;
                     }
                     if (!options.file) {
-                        const { file } = await inquirer_1.default.prompt([
+                        const { file } = await inquirer.prompt([
                             {
                                 type: 'input',
                                 name: 'file',
@@ -75,20 +69,20 @@ class CodeReviewCommand extends base_1.BaseCommand {
                         options.file = file;
                     }
                 }
-                const spinner = (0, ora_1.default)('Analyzing code...').start();
-                const configManager = new manager_1.ConfigManager();
+                const spinner = ora('Analyzing code...').start();
+                const configManager = new ConfigManager();
                 const agentConfig = await configManager.getAgentConfig();
-                const agent = new code_review_1.CodeReviewAgent(agentConfig);
+                const agent = new CodeReviewAgent(agentConfig);
                 // Get project context for header
                 const context = await agent['analyzeProjectContext'](options.file);
                 spinner.stop();
                 // Print project info
-                console.log(chalk_1.default.bold('PROJECT:'), context.rootPath.split('/').pop() || 'Unknown');
+                console.log(chalk.bold('PROJECT:'), context.rootPath.split('/').pop() || 'Unknown');
                 if (context.language)
-                    console.log(chalk_1.default.bold('LANGUAGE:'), context.language);
+                    console.log(chalk.bold('LANGUAGE:'), context.language);
                 if (context.framework)
-                    console.log(chalk_1.default.bold('FRAMEWORK:'), context.framework);
-                console.log(chalk_1.default.bold('SEVERITY THRESHOLD:'), 'medium');
+                    console.log(chalk.bold('FRAMEWORK:'), context.framework);
+                console.log(chalk.bold('SEVERITY THRESHOLD:'), 'medium');
                 console.log('');
                 spinner.start('Running analysis...');
                 const result = await agent.reviewCode({
@@ -107,44 +101,44 @@ class CodeReviewCommand extends base_1.BaseCommand {
                 }
                 // Summary section
                 console.log('');
-                console.log(chalk_1.default.cyan(separator));
-                console.log(chalk_1.default.cyan.bold('SUMMARY'));
-                console.log(chalk_1.default.cyan(separator));
+                console.log(chalk.cyan(separator));
+                console.log(chalk.cyan.bold('SUMMARY'));
+                console.log(chalk.cyan(separator));
                 console.log('');
-                console.log(chalk_1.default.bold('Total Issues:'), result.issueCount);
+                console.log(chalk.bold('Total Issues:'), result.issueCount);
                 console.log(thinSeparator.substring(0, 40));
                 if (result.criticalCount > 0) {
-                    console.log(chalk_1.default.red('Critical:'), result.criticalCount);
+                    console.log(chalk.red('Critical:'), result.criticalCount);
                 }
                 else {
-                    console.log(chalk_1.default.gray('Critical:'), result.criticalCount);
+                    console.log(chalk.gray('Critical:'), result.criticalCount);
                 }
                 if (result.highCount > 0) {
-                    console.log(chalk_1.default.yellow('High:    '), result.highCount);
+                    console.log(chalk.yellow('High:    '), result.highCount);
                 }
                 else {
-                    console.log(chalk_1.default.gray('High:    '), result.highCount);
+                    console.log(chalk.gray('High:    '), result.highCount);
                 }
                 if (result.mediumCount > 0) {
-                    console.log(chalk_1.default.blue('Medium:  '), result.mediumCount);
+                    console.log(chalk.blue('Medium:  '), result.mediumCount);
                 }
                 else {
-                    console.log(chalk_1.default.gray('Medium:  '), result.mediumCount);
+                    console.log(chalk.gray('Medium:  '), result.mediumCount);
                 }
-                console.log(chalk_1.default.gray('Low:     '), result.lowCount);
+                console.log(chalk.gray('Low:     '), result.lowCount);
                 console.log('');
                 // Status message
                 if (result.criticalCount > 0) {
-                    console.log(chalk_1.default.red.bold('Status: ✗ Critical issues must be fixed before merge'));
+                    console.log(chalk.red.bold('Status: ✗ Critical issues must be fixed before merge'));
                 }
                 else if (result.highCount > 0) {
-                    console.log(chalk_1.default.yellow.bold('Status: ⚠ High priority issues should be addressed'));
+                    console.log(chalk.yellow.bold('Status: ⚠ High priority issues should be addressed'));
                 }
                 else if (result.mediumCount > 0) {
-                    console.log(chalk_1.default.blue.bold('Status: ✓ Safe to merge with recommended improvements'));
+                    console.log(chalk.blue.bold('Status: ✓ Safe to merge with recommended improvements'));
                 }
                 else {
-                    console.log(chalk_1.default.green.bold('Status: ✓ All clear - no issues found'));
+                    console.log(chalk.green.bold('Status: ✓ All clear - no issues found'));
                 }
                 console.log('');
             }
@@ -154,5 +148,4 @@ class CodeReviewCommand extends base_1.BaseCommand {
         });
     }
 }
-exports.CodeReviewCommand = CodeReviewCommand;
 //# sourceMappingURL=code-review.js.map

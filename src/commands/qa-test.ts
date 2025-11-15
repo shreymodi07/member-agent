@@ -1,7 +1,7 @@
-import { BaseCommand } from './base';
-import { QATestAgent } from '../agents/qa-test';
-import { AIProvider } from '../providers/ai-provider';
-import { ConfigManager } from '../config/manager';
+import { BaseCommand } from './base.js';
+import { QATestAgent } from '../agents/qa-test.js';
+import { AIProvider } from '../providers/ai-provider.js';
+import { ConfigManager } from '../config/manager.js';
 import * as fs from 'fs-extra';
 
 export class QATestCommand extends BaseCommand {

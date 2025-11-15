@@ -1,5 +1,5 @@
-import { AgentConfig } from '../types';
-import { AIProvider } from '../providers/ai-provider';
+import { AgentConfig } from '../types/index.js';
+import { AIProvider } from '../providers/ai-provider.js';
 import fs from 'fs-extra';
 import path from 'path';
 import { execSync } from 'child_process';

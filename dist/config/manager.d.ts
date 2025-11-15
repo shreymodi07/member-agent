@@ -1,4 +1,4 @@
-import { AgentConfig } from '../types';
+import { AgentConfig } from '../types/index.js';
 export interface FullConfig extends AgentConfig {
     defaultLanguage?: string;
     packageManager?: 'npm' | 'yarn' | 'pnpm';

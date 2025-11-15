@@ -1,5 +1,5 @@
-import { AgentConfig, ProjectContext } from '../types';
-import { AIProvider } from '../providers/ai-provider';
+import { AgentConfig, ProjectContext } from '../types/index.js';
+import { AIProvider } from '../providers/ai-provider.js';
 import fs from 'fs-extra';
 import path from 'path';
 

@@ -1,16 +1,10 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SecurityCommand = void 0;
-const base_1 = require("./base");
-const chalk_1 = __importDefault(require("chalk"));
-const ora_1 = __importDefault(require("ora"));
-const child_process_1 = require("child_process");
-const security_compliance_1 = require("../agents/security-compliance");
-const manager_1 = require("../config/manager");
-class SecurityCommand extends base_1.BaseCommand {
+import { BaseCommand } from './base.js';
+import chalk from 'chalk';
+import ora from 'ora';
+import { execSync } from 'child_process';
+import { SecurityComplianceAgent } from '../agents/security-compliance.js';
+import { ConfigManager } from '../config/manager.js';
+export class SecurityCommand extends BaseCommand {
     constructor() {
         super('security', 'Find security vulnerabilities and compliance issues');
     }
@@ -26,21 +20,21 @@ class SecurityCommand extends base_1.BaseCommand {
     setupAction() {
         this.command.action(async (options) => {
             try {
-                console.log(chalk_1.default.blue('🔒 Teladoc Security Scanner'));
+                console.log(chalk.blue('🔒 Teladoc Security Scanner'));
                 let filePaths = [];
                 if (options.diff) {
                     // Get actual diff content, not just file names
                     try {
-                        const diffOutput = (0, child_process_1.execSync)('git diff HEAD', { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
+                        const diffOutput = execSync('git diff HEAD', { encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024 });
                         if (!diffOutput.trim()) {
-                            console.log(chalk_1.default.yellow('No changes in git diff.'));
+                            console.log(chalk.yellow('No changes in git diff.'));
                             return;
                         }
                         // Pass diff content as a special marker
                         filePaths = ['__GIT_DIFF__'];
                     }
                     catch (error) {
-                        console.error(chalk_1.default.red('Error getting git diff. Make sure you are in a git repository.'));
+                        console.error(chalk.red('Error getting git diff. Make sure you are in a git repository.'));
                         return;
                     }
                 }
@@ -48,10 +42,10 @@ class SecurityCommand extends base_1.BaseCommand {
                     // Default to current directory if no file specified
                     filePaths = options.file ? [options.file] : ['.'];
                 }
-                const spinner = (0, ora_1.default)('Scanning for security vulnerabilities...').start();
-                const configManager = new manager_1.ConfigManager();
+                const spinner = ora('Scanning for security vulnerabilities...').start();
+                const configManager = new ConfigManager();
                 const agentConfig = await configManager.getAgentConfig();
-                const agent = new security_compliance_1.SecurityComplianceAgent(agentConfig);
+                const agent = new SecurityComplianceAgent(agentConfig);
                 const result = await agent.scanSecurity({
                     filePaths: filePaths,
                     scanType: 'all',
@@ -65,22 +59,22 @@ class SecurityCommand extends base_1.BaseCommand {
                     console.log(result.report);
                 }
                 else {
-                    console.log(chalk_1.default.green(`✅ Security report saved to: ${result.outputPath}`));
+                    console.log(chalk.green(`✅ Security report saved to: ${result.outputPath}`));
                 }
                 // Show summary
                 if (result.criticalCount > 0) {
-                    console.log(chalk_1.default.red(`🚨 ${result.criticalCount} critical security issues found!`));
+                    console.log(chalk.red(`🚨 ${result.criticalCount} critical security issues found!`));
                 }
                 else if (result.highCount > 0) {
-                    console.log(chalk_1.default.yellow(`⚠️  ${result.highCount} high priority security issues found`));
+                    console.log(chalk.yellow(`⚠️  ${result.highCount} high priority security issues found`));
                 }
                 else {
-                    console.log(chalk_1.default.green('✅ No critical security issues found'));
+                    console.log(chalk.green('✅ No critical security issues found'));
                 }
                 if (options.verbose) {
-                    console.log(chalk_1.default.gray(`📊 Total issues: ${result.totalIssues}`));
-                    console.log(chalk_1.default.gray(`🔍 Scanned ${result.filesScanned} files`));
-                    console.log(chalk_1.default.gray(`⏱️  Scan completed in ${result.duration}ms`));
+                    console.log(chalk.gray(`📊 Total issues: ${result.totalIssues}`));
+                    console.log(chalk.gray(`🔍 Scanned ${result.filesScanned} files`));
+                    console.log(chalk.gray(`⏱️  Scan completed in ${result.duration}ms`));
                 }
                 // QA Testing Guidance
                 console.log('\n🧪 QA Testing Guidance:');
@@ -106,5 +100,4 @@ class SecurityCommand extends base_1.BaseCommand {
         });
     }
 }
-exports.SecurityCommand = SecurityCommand;
 //# sourceMappingURL=security.js.map

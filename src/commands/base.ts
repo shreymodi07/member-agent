@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { BaseCommandOptions } from '../types';
+import { BaseCommandOptions } from '../types/index.js';
 
 export abstract class BaseCommand {
   protected command: Command;

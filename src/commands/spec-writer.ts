@@ -1,10 +1,10 @@
-import { BaseCommand } from './base';
-import { BaseCommandOptions } from '../types';
+import { BaseCommand } from './base.js';
+import { BaseCommandOptions } from '../types/index.js';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { SpecWriterAgent } from '../agents/spec-writer';
-import { ConfigManager } from '../config/manager';
+import { SpecWriterAgent } from '../agents/spec-writer.js';
+import { ConfigManager } from '../config/manager.js';
 
 interface SpecWriterOptions extends BaseCommandOptions {
   file?: string;

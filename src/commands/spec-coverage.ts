@@ -1,7 +1,7 @@
-import { BaseCommand } from './base';
-import { SpecCoverageAgent, CoverageAnalysis } from '../agents/spec-coverage';
-import { AIProvider } from '../providers/ai-provider';
-import { ConfigManager } from '../config/manager';
+import { BaseCommand } from './base.js';
+import { SpecCoverageAgent, CoverageAnalysis } from '../agents/spec-coverage.js';
+import { AIProvider } from '../providers/ai-provider.js';
+import { ConfigManager } from '../config/manager.js';
 import * as fs from 'fs-extra';
 import { execSync } from 'child_process';
 

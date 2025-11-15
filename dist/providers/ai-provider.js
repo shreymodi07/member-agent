@@ -1,11 +1,8 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.AIProvider = void 0;
 // NOTE: OpenAI and Anthropic support intentionally disabled (commented) per current requirement.
 // To re-enable later, uncomment the imports and related logic below.
 // import Anthropic from '@anthropic-ai/sdk';
 // import OpenAI from 'openai';
-class AIProvider {
+export class AIProvider {
     constructor(config) {
         // Force provider to azure-openai only.
         const provider = 'azure-openai';
@@ -208,5 +205,4 @@ The code has been analyzed for security, performance, and maintainability issues
         return 'Mock AI response generated successfully.';
     }
 }
-exports.AIProvider = AIProvider;
 //# sourceMappingURL=ai-provider.js.map

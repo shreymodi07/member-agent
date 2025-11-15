@@ -1,10 +1,10 @@
-import { BaseCommand } from './base';
-import { BaseCommandOptions } from '../types';
+import { BaseCommand } from './base.js';
+import { BaseCommandOptions } from '../types/index.js';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
-import { CodeReviewAgent } from '../agents/code-review';
-import { ConfigManager } from '../config/manager';
+import { CodeReviewAgent } from '../agents/code-review.js';
+import { ConfigManager } from '../config/manager.js';
 
 interface CodeReviewOptions extends BaseCommandOptions {
   file?: string;

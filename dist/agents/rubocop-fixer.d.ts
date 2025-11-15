@@ -1,4 +1,4 @@
-import { AgentConfig } from '../types';
+import { AgentConfig } from '../types/index.js';
 export interface RubocopFixerOptions {
     projectPath: string;
     maxIterations?: number;

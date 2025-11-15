@@ -2,6 +2,7 @@
   "name": "teladoc-member-agents",
   "version": "1.0.0",
   "description": "AI-powered code review and security scanning for Teladoc",
+  "type": "module",
   "main": "dist/index.js",
   "bin": {
     "teladoc-agent": "dist/cli.js"
