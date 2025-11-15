@@ -1,4 +1,4 @@
-import { AgentConfig } from '../types';
+import { AgentConfig } from '../types/index.js';
 // NOTE: OpenAI and Anthropic support intentionally disabled (commented) per current requirement.
 // To re-enable later, uncomment the imports and related logic below.
 // import Anthropic from '@anthropic-ai/sdk';

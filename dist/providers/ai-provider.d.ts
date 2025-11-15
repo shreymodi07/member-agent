@@ -1,4 +1,4 @@
-import { AgentConfig } from '../types';
+import { AgentConfig } from '../types/index.js';
 export declare class AIProvider {
     private config;
     private azureBaseUrl?;

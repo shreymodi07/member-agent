@@ -1,15 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RubocopFixerCommand = void 0;
-const base_1 = require("./base");
-const chalk_1 = __importDefault(require("chalk"));
-const ora_1 = __importDefault(require("ora"));
-const rubocop_fixer_1 = require("../agents/rubocop-fixer");
-const manager_1 = require("../config/manager");
-class RubocopFixerCommand extends base_1.BaseCommand {
+import { BaseCommand } from './base.js';
+import chalk from 'chalk';
+import ora from 'ora';
+import { RubocopFixerAgent } from '../agents/rubocop-fixer.js';
+import { ConfigManager } from '../config/manager.js';
+export class RubocopFixerCommand extends BaseCommand {
     constructor() {
         super('rubocop-fix', 'Fix Rubocop issues using ruby_gardener');
     }
@@ -22,29 +16,28 @@ class RubocopFixerCommand extends base_1.BaseCommand {
     setupAction() {
         this.command.action(async (options) => {
             try {
-                console.log(chalk_1.default.blue('🔧 Teladoc Rubocop Fixer'));
-                const configManager = new manager_1.ConfigManager();
+                console.log(chalk.blue('🔧 Teladoc Rubocop Fixer'));
+                const configManager = new ConfigManager();
                 const agentConfig = await configManager.getAgentConfig();
-                const agent = new rubocop_fixer_1.RubocopFixerAgent(agentConfig);
-                const spinner = (0, ora_1.default)('Starting Rubocop fix process...').start();
+                const agent = new RubocopFixerAgent(agentConfig);
+                const spinner = ora('Starting Rubocop fix process...').start();
                 const result = await agent.fixRubocop({
                     projectPath: options.path || process.cwd(),
                     maxIterations: parseInt(options.maxIterations?.toString() || '10')
                 });
                 spinner.stop();
-                console.log(chalk_1.default.green('✅ Rubocop fixing completed!'));
-                console.log(chalk_1.default.blue(result.summary));
+                console.log(chalk.green('✅ Rubocop fixing completed!'));
+                console.log(chalk.blue(result.summary));
                 if (result.disabledRules.length > 0) {
-                    console.log(chalk_1.default.yellow('Disabled rules:'));
-                    result.disabledRules.forEach(rule => console.log(chalk_1.default.gray(`  • ${rule}`)));
+                    console.log(chalk.yellow('Disabled rules:'));
+                    result.disabledRules.forEach(rule => console.log(chalk.gray(`  • ${rule}`)));
                 }
             }
             catch (error) {
-                console.error(chalk_1.default.red('❌ Error during Rubocop fixing:'), error.message);
+                console.error(chalk.red('❌ Error during Rubocop fixing:'), error.message);
                 process.exit(1);
             }
         });
     }
 }
-exports.RubocopFixerCommand = RubocopFixerCommand;
 //# sourceMappingURL=rubocop-fixer.js.map

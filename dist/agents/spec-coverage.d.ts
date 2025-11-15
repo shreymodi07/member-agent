@@ -1,4 +1,4 @@
-import { AIProvider } from '../providers/ai-provider';
+import { AIProvider } from '../providers/ai-provider.js';
 export interface FunctionSignature {
     name: string;
     parameters: Parameter[];

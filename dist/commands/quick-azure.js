@@ -1,14 +1,8 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.QuickAzureCommand = void 0;
-const base_1 = require("./base");
-const chalk_1 = __importDefault(require("chalk"));
-const inquirer_1 = __importDefault(require("inquirer"));
-const manager_1 = require("../config/manager");
-class QuickAzureCommand extends base_1.BaseCommand {
+import { BaseCommand } from './base.js';
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import { ConfigManager } from '../config/manager.js';
+export class QuickAzureCommand extends BaseCommand {
     constructor() {
         super('quick-azure', 'One-step setup: just provide Azure OpenAI API key');
     }
@@ -19,10 +13,10 @@ class QuickAzureCommand extends base_1.BaseCommand {
     setupAction() {
         this.command.action(async (options) => {
             try {
-                const configManager = new manager_1.ConfigManager();
+                const configManager = new ConfigManager();
                 let apiKey = options.key || process.env.AZURE_OPENAI_API_KEY;
                 if (!apiKey) {
-                    const ans = await inquirer_1.default.prompt([
+                    const ans = await inquirer.prompt([
                         {
                             type: 'password',
                             name: 'apiKey',
@@ -47,16 +41,15 @@ class QuickAzureCommand extends base_1.BaseCommand {
                 await configManager.set('azureDeployment', defaults.azureDeployment);
                 await configManager.set('azureApiVersion', defaults.azureApiVersion);
                 await configManager.set('apiKey', apiKey);
-                console.log(chalk_1.default.green('✅ Azure OpenAI quick setup complete.'));
-                console.log(chalk_1.default.blue('You can now run: teladoc-agent review -f someFile.js'));
-                console.log(chalk_1.default.gray('To adjust settings later use: teladoc-agent config --list'));
+                console.log(chalk.green('✅ Azure OpenAI quick setup complete.'));
+                console.log(chalk.blue('You can now run: teladoc-agent review -f someFile.js'));
+                console.log(chalk.gray('To adjust settings later use: teladoc-agent config --list'));
             }
             catch (err) {
-                console.error(chalk_1.default.red('❌ Quick Azure setup failed:'), err.message);
+                console.error(chalk.red('❌ Quick Azure setup failed:'), err.message);
                 process.exit(1);
             }
         });
     }
 }
-exports.QuickAzureCommand = QuickAzureCommand;
 //# sourceMappingURL=quick-azure.js.map

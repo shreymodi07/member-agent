@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
-import { AgentConfig } from '../types';
+import { AgentConfig } from '../types/index.js';
 
 export interface FullConfig extends AgentConfig {
   defaultLanguage?: string;

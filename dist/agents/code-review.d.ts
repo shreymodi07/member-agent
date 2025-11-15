@@ -1,4 +1,4 @@
-import { AgentConfig } from '../types';
+import { AgentConfig } from '../types/index.js';
 export interface CodeReviewOptions {
     filePath?: string;
     prNumber?: string;

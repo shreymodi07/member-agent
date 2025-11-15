@@ -1,15 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ConfigManager = void 0;
-const fs_extra_1 = __importDefault(require("fs-extra"));
-const path_1 = __importDefault(require("path"));
-const os_1 = __importDefault(require("os"));
-class ConfigManager {
+import fs from 'fs-extra';
+import path from 'path';
+import os from 'os';
+export class ConfigManager {
     constructor() {
-        this.configPath = path_1.default.join(os_1.default.homedir(), '.teladoc-agent', 'config.json');
+        this.configPath = path.join(os.homedir(), '.teladoc-agent', 'config.json');
         this.defaultConfig = {
             provider: 'azure-openai',
             model: 'gpt-4.1',
@@ -33,8 +27,8 @@ class ConfigManager {
     }
     async getAll() {
         try {
-            if (await fs_extra_1.default.pathExists(this.configPath)) {
-                const configData = await fs_extra_1.default.readJson(this.configPath);
+            if (await fs.pathExists(this.configPath)) {
+                const configData = await fs.readJson(this.configPath);
                 return { ...this.defaultConfig, ...configData };
             }
         }
@@ -47,8 +41,8 @@ class ConfigManager {
         await this.saveConfig(this.defaultConfig);
     }
     async saveConfig(config) {
-        await fs_extra_1.default.ensureDir(path_1.default.dirname(this.configPath));
-        await fs_extra_1.default.writeJson(this.configPath, config, { spaces: 2 });
+        await fs.ensureDir(path.dirname(this.configPath));
+        await fs.writeJson(this.configPath, config, { spaces: 2 });
     }
     async getAgentConfig() {
         const config = await this.getAll();
@@ -63,5 +57,4 @@ class ConfigManager {
         };
     }
 }
-exports.ConfigManager = ConfigManager;
 //# sourceMappingURL=manager.js.map

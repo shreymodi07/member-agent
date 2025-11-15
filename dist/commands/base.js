@@ -1,10 +1,7 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.BaseCommand = void 0;
-const commander_1 = require("commander");
-class BaseCommand {
+import { Command } from 'commander';
+export class BaseCommand {
     constructor(name, description) {
-        this.command = new commander_1.Command(name);
+        this.command = new Command(name);
         this.command.description(description);
         this.setupOptions();
         this.setupAction();
@@ -30,5 +27,4 @@ class BaseCommand {
         process.exit(1);
     }
 }
-exports.BaseCommand = BaseCommand;
 //# sourceMappingURL=base.js.map

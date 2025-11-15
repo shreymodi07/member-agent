@@ -1,16 +1,10 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SpecWriterCommand = void 0;
-const base_1 = require("./base");
-const chalk_1 = __importDefault(require("chalk"));
-const inquirer_1 = __importDefault(require("inquirer"));
-const ora_1 = __importDefault(require("ora"));
-const spec_writer_1 = require("../agents/spec-writer");
-const manager_1 = require("../config/manager");
-class SpecWriterCommand extends base_1.BaseCommand {
+import { BaseCommand } from './base.js';
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import ora from 'ora';
+import { SpecWriterAgent } from '../agents/spec-writer.js';
+import { ConfigManager } from '../config/manager.js';
+export class SpecWriterCommand extends BaseCommand {
     constructor() {
         super('spec', 'Generate technical specifications using AI');
     }
@@ -25,9 +19,9 @@ class SpecWriterCommand extends base_1.BaseCommand {
     setupAction() {
         this.command.action(async (options) => {
             try {
-                console.log(chalk_1.default.blue('🔍 Teladoc Spec Writer Agent'));
+                console.log(chalk.blue('🔍 Teladoc Spec Writer Agent'));
                 if (!options.file) {
-                    const { file } = await inquirer_1.default.prompt([
+                    const { file } = await inquirer.prompt([
                         {
                             type: 'input',
                             name: 'file',
@@ -38,7 +32,7 @@ class SpecWriterCommand extends base_1.BaseCommand {
                     options.file = file;
                 }
                 if (!options.type) {
-                    const { type } = await inquirer_1.default.prompt([
+                    const { type } = await inquirer.prompt([
                         {
                             type: 'list',
                             name: 'type',
@@ -52,10 +46,10 @@ class SpecWriterCommand extends base_1.BaseCommand {
                     ]);
                     options.type = type;
                 }
-                const spinner = (0, ora_1.default)('Analyzing code and generating specification...').start();
-                const configManager = new manager_1.ConfigManager();
+                const spinner = ora('Analyzing code and generating specification...').start();
+                const configManager = new ConfigManager();
                 const agentConfig = await configManager.getAgentConfig();
-                const agent = new spec_writer_1.SpecWriterAgent(agentConfig);
+                const agent = new SpecWriterAgent(agentConfig);
                 const result = await agent.generateSpec({
                     filePath: options.file,
                     type: options.type,
@@ -63,10 +57,10 @@ class SpecWriterCommand extends base_1.BaseCommand {
                     outputPath: options.output
                 });
                 spinner.succeed('Specification generated successfully!');
-                console.log(chalk_1.default.green(`✅ Specification saved to: ${result.outputPath}`));
+                console.log(chalk.green(`✅ Specification saved to: ${result.outputPath}`));
                 if (options.verbose) {
-                    console.log(chalk_1.default.gray(`📊 Analysis completed in ${result.duration}ms`));
-                    console.log(chalk_1.default.gray(`📝 Generated ${result.lineCount} lines of specification`));
+                    console.log(chalk.gray(`📊 Analysis completed in ${result.duration}ms`));
+                    console.log(chalk.gray(`📝 Generated ${result.lineCount} lines of specification`));
                 }
             }
             catch (error) {
@@ -75,5 +69,4 @@ class SpecWriterCommand extends base_1.BaseCommand {
         });
     }
 }
-exports.SpecWriterCommand = SpecWriterCommand;
 //# sourceMappingURL=spec-writer.js.map

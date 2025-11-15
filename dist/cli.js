@@ -1,42 +1,43 @@
 #!/usr/bin/env node
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const commander_1 = require("commander");
-const chalk_1 = __importDefault(require("chalk"));
-const code_review_1 = require("./commands/code-review");
-const security_1 = require("./commands/security");
-const config_1 = require("./commands/config");
-const spec_coverage_1 = require("./commands/spec-coverage");
-const qa_test_1 = require("./commands/qa-test");
-const rubocop_fixer_1 = require("./commands/rubocop-fixer");
-const rubocop_fix_diff_1 = require("./commands/rubocop-fix-diff");
-const quick_azure_1 = require("./commands/quick-azure");
-const package_json_1 = require("../package.json");
-const program = new commander_1.Command();
+import { Command } from 'commander';
+import chalk from 'chalk';
+import { CodeReviewCommand } from './commands/code-review.js';
+import { SecurityCommand } from './commands/security.js';
+import { ConfigCommand } from './commands/config.js';
+import { SpecCoverageCommand } from './commands/spec-coverage.js';
+import { QATestCommand } from './commands/qa-test.js';
+import { RubocopFixerCommand } from './commands/rubocop-fixer.js';
+import { RubocopFixerDiffCommand } from './commands/rubocop-fix-diff.js';
+import { QuickAzureCommand } from './commands/quick-azure.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
+const version = packageJson.version;
+const program = new Command();
 program
     .name('teladoc-agent')
     .description('AI-powered code review and security scanning for Teladoc')
-    .version(package_json_1.version);
+    .version(version);
 // Add commands
-program.addCommand(new code_review_1.CodeReviewCommand().getCommand());
-program.addCommand(new security_1.SecurityCommand().getCommand());
-program.addCommand(new config_1.ConfigCommand().getCommand());
-program.addCommand(new spec_coverage_1.SpecCoverageCommand().getCommand());
-program.addCommand(new qa_test_1.QATestCommand().getCommand());
-program.addCommand(new rubocop_fixer_1.RubocopFixerCommand().getCommand());
-program.addCommand(new rubocop_fix_diff_1.RubocopFixerDiffCommand().getCommand());
-program.addCommand(new quick_azure_1.QuickAzureCommand().getCommand());
+program.addCommand(new CodeReviewCommand().getCommand());
+program.addCommand(new SecurityCommand().getCommand());
+program.addCommand(new ConfigCommand().getCommand());
+program.addCommand(new SpecCoverageCommand().getCommand());
+program.addCommand(new QATestCommand().getCommand());
+program.addCommand(new RubocopFixerCommand().getCommand());
+program.addCommand(new RubocopFixerDiffCommand().getCommand());
+program.addCommand(new QuickAzureCommand().getCommand());
 // Global options
 program
     .option('-v, --verbose', 'Enable verbose output')
     .option('--debug', 'Enable debug mode');
 // Handle unknown commands
 program.on('command:*', (operands) => {
-    console.error(chalk_1.default.red(`Unknown command: ${operands[0]}`));
-    console.log(chalk_1.default.yellow('Run --help to see available commands'));
+    console.error(chalk.red(`Unknown command: ${operands[0]}`));
+    console.log(chalk.yellow('Run --help to see available commands'));
     process.exit(1);
 });
 // Show help if no command provided

@@ -2,15 +2,22 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { CodeReviewCommand } from './commands/code-review';
-import { SecurityCommand } from './commands/security';
-import { ConfigCommand } from './commands/config';
-import { SpecCoverageCommand } from './commands/spec-coverage';
-import { QATestCommand } from './commands/qa-test';
-import { RubocopFixerCommand } from './commands/rubocop-fixer';
-import { RubocopFixerDiffCommand } from './commands/rubocop-fix-diff';
-import { QuickAzureCommand } from './commands/quick-azure';
-import { version } from '../package.json';
+import { CodeReviewCommand } from './commands/code-review.js';
+import { SecurityCommand } from './commands/security.js';
+import { ConfigCommand } from './commands/config.js';
+import { SpecCoverageCommand } from './commands/spec-coverage.js';
+import { QATestCommand } from './commands/qa-test.js';
+import { RubocopFixerCommand } from './commands/rubocop-fixer.js';
+import { RubocopFixerDiffCommand } from './commands/rubocop-fix-diff.js';
+import { QuickAzureCommand } from './commands/quick-azure.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
+const version = packageJson.version;
 
 const program = new Command();
 

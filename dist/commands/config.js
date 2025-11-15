@@ -1,14 +1,8 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.ConfigCommand = void 0;
-const base_1 = require("./base");
-const chalk_1 = __importDefault(require("chalk"));
-const inquirer_1 = __importDefault(require("inquirer"));
-const manager_1 = require("../config/manager");
-class ConfigCommand extends base_1.BaseCommand {
+import { BaseCommand } from './base.js';
+import chalk from 'chalk';
+import inquirer from 'inquirer';
+import { ConfigManager } from '../config/manager.js';
+export class ConfigCommand extends BaseCommand {
     constructor() {
         super('config', 'Manage agent configuration');
     }
@@ -24,9 +18,9 @@ class ConfigCommand extends base_1.BaseCommand {
     setupAction() {
         this.command.action(async (options) => {
             try {
-                const configManager = new manager_1.ConfigManager();
+                const configManager = new ConfigManager();
                 if (options.reset) {
-                    const { confirm } = await inquirer_1.default.prompt([
+                    const { confirm } = await inquirer.prompt([
                         {
                             type: 'confirm',
                             name: 'confirm',
@@ -36,29 +30,29 @@ class ConfigCommand extends base_1.BaseCommand {
                     ]);
                     if (confirm) {
                         await configManager.reset();
-                        console.log(chalk_1.default.green('✅ Configuration reset to defaults'));
+                        console.log(chalk.green('✅ Configuration reset to defaults'));
                     }
                     return;
                 }
                 if (options.list) {
                     const config = await configManager.getAll();
-                    console.log(chalk_1.default.blue('📋 Current Configuration:'));
+                    console.log(chalk.blue('📋 Current Configuration:'));
                     console.log(JSON.stringify(config, null, 2));
                     return;
                 }
                 if (options.get) {
                     const value = await configManager.get(options.get);
                     if (value !== undefined) {
-                        console.log(chalk_1.default.green(`${options.get}: ${value}`));
+                        console.log(chalk.green(`${options.get}: ${value}`));
                     }
                     else {
-                        console.log(chalk_1.default.yellow(`Configuration key '${options.get}' not found`));
+                        console.log(chalk.yellow(`Configuration key '${options.get}' not found`));
                     }
                     return;
                 }
                 if (options.set) {
                     if (!options.value) {
-                        const { value } = await inquirer_1.default.prompt([
+                        const { value } = await inquirer.prompt([
                             {
                                 type: 'input',
                                 name: 'value',
@@ -69,12 +63,12 @@ class ConfigCommand extends base_1.BaseCommand {
                         options.value = value;
                     }
                     await configManager.set(options.set, options.value);
-                    console.log(chalk_1.default.green(`✅ Set ${options.set} = ${options.value}`));
+                    console.log(chalk.green(`✅ Set ${options.set} = ${options.value}`));
                     return;
                 }
                 // Interactive configuration setup
-                console.log(chalk_1.default.blue('🔧 Interactive Configuration Setup'));
-                const { action } = await inquirer_1.default.prompt([
+                console.log(chalk.blue('🔧 Interactive Configuration Setup'));
+                const { action } = await inquirer.prompt([
                     {
                         type: 'list',
                         name: 'action',
@@ -99,7 +93,7 @@ class ConfigCommand extends base_1.BaseCommand {
                         break;
                     case 'view':
                         const config = await configManager.getAll();
-                        console.log(chalk_1.default.blue('📋 Current Configuration:'));
+                        console.log(chalk.blue('📋 Current Configuration:'));
                         console.log(JSON.stringify(config, null, 2));
                         break;
                 }
@@ -121,22 +115,22 @@ class ConfigCommand extends base_1.BaseCommand {
             }
         ];
         // baseUrl input removed (non-Azure providers disabled)
-        const answers = await inquirer_1.default.prompt(questions);
+        const answers = await inquirer.prompt(questions);
         if (answers.apiKey) {
             await configManager.set('apiKey', answers.apiKey);
         }
         // baseUrl skipped in simplified mode
-        console.log(chalk_1.default.green('✅ API configuration saved'));
+        console.log(chalk.green('✅ API configuration saved'));
     }
     async setupProviderConfig(configManager) {
-        console.log(chalk_1.default.yellow('Provider selection disabled. Using Azure OpenAI only.'));
+        console.log(chalk.yellow('Provider selection disabled. Using Azure OpenAI only.'));
         await configManager.set('provider', 'azure-openai');
         await configManager.set('model', 'gpt-4.1');
         await this.setupAzureConfig(configManager);
-        console.log(chalk_1.default.green('✅ Azure provider configuration saved'));
+        console.log(chalk.green('✅ Azure provider configuration saved'));
     }
     async setupProjectConfig(configManager) {
-        const answers = await inquirer_1.default.prompt([
+        const answers = await inquirer.prompt([
             {
                 type: 'input',
                 name: 'defaultLanguage',
@@ -153,10 +147,10 @@ class ConfigCommand extends base_1.BaseCommand {
         ]);
         await configManager.set('defaultLanguage', answers.defaultLanguage);
         await configManager.set('packageManager', answers.packageManager);
-        console.log(chalk_1.default.green('✅ Project defaults saved'));
+        console.log(chalk.green('✅ Project defaults saved'));
     }
     async setupAzureConfig(configManager) {
-        const answers = await inquirer_1.default.prompt([
+        const answers = await inquirer.prompt([
             {
                 type: 'input',
                 name: 'azureEndpoint',
@@ -179,8 +173,7 @@ class ConfigCommand extends base_1.BaseCommand {
         await configManager.set('azureEndpoint', answers.azureEndpoint);
         await configManager.set('azureDeployment', answers.azureDeployment);
         await configManager.set('azureApiVersion', answers.azureApiVersion);
-        console.log(chalk_1.default.green('✅ Azure OpenAI configuration saved'));
+        console.log(chalk.green('✅ Azure OpenAI configuration saved'));
     }
 }
-exports.ConfigCommand = ConfigCommand;
 //# sourceMappingURL=config.js.map

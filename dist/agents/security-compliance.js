@@ -1,15 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SecurityComplianceAgent = void 0;
-const ai_provider_1 = require("../providers/ai-provider");
-const fs_extra_1 = __importDefault(require("fs-extra"));
-const path_1 = __importDefault(require("path"));
-class SecurityComplianceAgent {
+import { AIProvider } from '../providers/ai-provider.js';
+import fs from 'fs-extra';
+import path from 'path';
+export class SecurityComplianceAgent {
     constructor(config) {
-        this.aiProvider = new ai_provider_1.AIProvider(config);
+        this.aiProvider = new AIProvider(config);
     }
     async scanSecurity(options) {
         const startTime = Date.now();
@@ -42,8 +36,8 @@ class SecurityComplianceAgent {
         let outputPath;
         if (options.outputPath || options.format !== 'console') {
             outputPath = options.outputPath || this.getDefaultOutputPath(options.filePaths[0] || '.', options.format);
-            await fs_extra_1.default.ensureDir(path_1.default.dirname(outputPath));
-            await fs_extra_1.default.writeFile(outputPath, formattedReport);
+            await fs.ensureDir(path.dirname(outputPath));
+            await fs.writeFile(outputPath, formattedReport);
         }
         const duration = Date.now() - startTime;
         // Calculate counts
@@ -72,8 +66,8 @@ class SecurityComplianceAgent {
         let totalSize = 0;
         for (const filePath of filePaths) {
             try {
-                const realPath = await fs_extra_1.default.realpath(filePath);
-                const stats = await fs_extra_1.default.stat(realPath);
+                const realPath = await fs.realpath(filePath);
+                const stats = await fs.stat(realPath);
                 if (stats.isDirectory()) {
                     const files = await this.getSecurityRelevantFiles(realPath);
                     allFiles.push(...files);
@@ -98,7 +92,7 @@ class SecurityComplianceAgent {
         let filesProcessed = 0;
         for (const file of uniqueFiles) {
             try {
-                const stats = await fs_extra_1.default.stat(file);
+                const stats = await fs.stat(file);
                 // Skip files that are too large
                 if (stats.size > MAX_FILE_SIZE) {
                     console.warn(`Warning: Skipping large file ${file} (${Math.round(stats.size / 1024)}KB)`);
@@ -109,7 +103,7 @@ class SecurityComplianceAgent {
                     console.warn(`Warning: Reached maximum content size limit. Scanned ${filesProcessed} files.`);
                     break;
                 }
-                const content = await fs_extra_1.default.readFile(file, 'utf-8');
+                const content = await fs.readFile(file, 'utf-8');
                 contents.push(`// File: ${file}\n${content}\n`);
                 totalSize += stats.size;
                 filesProcessed++;
@@ -128,17 +122,17 @@ class SecurityComplianceAgent {
         const files = [];
         let entries;
         try {
-            entries = await fs_extra_1.default.readdir(dirPath);
+            entries = await fs.readdir(dirPath);
         }
         catch (error) {
             // Silently skip directories we can't read
             return files;
         }
         for (const entry of entries) {
-            const fullPath = path_1.default.join(dirPath, entry);
+            const fullPath = path.join(dirPath, entry);
             try {
                 // Use lstat to detect symlinks without following them
-                const stats = await fs_extra_1.default.lstat(fullPath);
+                const stats = await fs.lstat(fullPath);
                 // Skip symlinks to avoid broken references
                 if (stats.isSymbolicLink()) {
                     continue;
@@ -195,29 +189,29 @@ class SecurityComplianceAgent {
         };
     }
     async findProjectRoot(filePath) {
-        let current = path_1.default.isAbsolute(filePath) ? path_1.default.dirname(filePath) : process.cwd();
-        while (current !== path_1.default.dirname(current)) {
-            const packageJson = path_1.default.join(current, 'package.json');
-            const gitDir = path_1.default.join(current, '.git');
-            if (await fs_extra_1.default.pathExists(packageJson) || await fs_extra_1.default.pathExists(gitDir)) {
+        let current = path.isAbsolute(filePath) ? path.dirname(filePath) : process.cwd();
+        while (current !== path.dirname(current)) {
+            const packageJson = path.join(current, 'package.json');
+            const gitDir = path.join(current, '.git');
+            if (await fs.pathExists(packageJson) || await fs.pathExists(gitDir)) {
                 return current;
             }
-            current = path_1.default.dirname(current);
+            current = path.dirname(current);
         }
         return process.cwd();
     }
     async detectLanguage(rootPath) {
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'tsconfig.json')))
+        if (await fs.pathExists(path.join(rootPath, 'tsconfig.json')))
             return 'typescript';
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'package.json')))
+        if (await fs.pathExists(path.join(rootPath, 'package.json')))
             return 'javascript';
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'requirements.txt')))
+        if (await fs.pathExists(path.join(rootPath, 'requirements.txt')))
             return 'python';
         return undefined;
     }
     async detectFramework(rootPath) {
         try {
-            const packageJson = await fs_extra_1.default.readJson(path_1.default.join(rootPath, 'package.json'));
+            const packageJson = await fs.readJson(path.join(rootPath, 'package.json'));
             const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
             if (dependencies.react)
                 return 'react';
@@ -234,9 +228,9 @@ class SecurityComplianceAgent {
         return undefined;
     }
     async detectPackageManager(rootPath) {
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'pnpm-lock.yaml')))
+        if (await fs.pathExists(path.join(rootPath, 'pnpm-lock.yaml')))
             return 'pnpm';
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'yarn.lock')))
+        if (await fs.pathExists(path.join(rootPath, 'yarn.lock')))
             return 'yarn';
         return 'npm';
     }
@@ -557,7 +551,7 @@ GDPR Compliance Requirements:
         }
     }
     getDefaultOutputPath(inputPath, format) {
-        const baseName = path_1.default.basename(inputPath, path_1.default.extname(inputPath));
+        const baseName = path.basename(inputPath, path.extname(inputPath));
         const timestamp = new Date().toISOString().split('T')[0];
         let ext;
         switch (format) {
@@ -571,8 +565,7 @@ GDPR Compliance Requirements:
                 ext = 'md';
                 break;
         }
-        return path_1.default.join(process.cwd(), 'security-reports', `${baseName}-security-${timestamp}.${ext}`);
+        return path.join(process.cwd(), 'security-reports', `${baseName}-security-${timestamp}.${ext}`);
     }
 }
-exports.SecurityComplianceAgent = SecurityComplianceAgent;
 //# sourceMappingURL=security-compliance.js.map

@@ -1,15 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.SpecWriterAgent = void 0;
-const ai_provider_1 = require("../providers/ai-provider");
-const fs_extra_1 = __importDefault(require("fs-extra"));
-const path_1 = __importDefault(require("path"));
-class SpecWriterAgent {
+import { AIProvider } from '../providers/ai-provider.js';
+import fs from 'fs-extra';
+import path from 'path';
+export class SpecWriterAgent {
     constructor(config) {
-        this.aiProvider = new ai_provider_1.AIProvider(config);
+        this.aiProvider = new AIProvider(config);
     }
     async generateSpec(options) {
         const startTime = Date.now();
@@ -20,8 +14,8 @@ class SpecWriterAgent {
         const specification = await this.generateSpecification(codeContent, projectContext, options.type, options.template);
         // Save to output file
         const outputPath = options.outputPath || this.getDefaultOutputPath(options.filePath, options.type);
-        await fs_extra_1.default.ensureDir(path_1.default.dirname(outputPath));
-        await fs_extra_1.default.writeFile(outputPath, specification);
+        await fs.ensureDir(path.dirname(outputPath));
+        await fs.writeFile(outputPath, specification);
         const duration = Date.now() - startTime;
         const lineCount = specification.split('\n').length;
         return {
@@ -32,26 +26,26 @@ class SpecWriterAgent {
         };
     }
     async readCodeContent(filePath) {
-        const stats = await fs_extra_1.default.stat(filePath);
+        const stats = await fs.stat(filePath);
         if (stats.isDirectory()) {
             // Read multiple files from directory
             const files = await this.getCodeFiles(filePath);
             const contents = await Promise.all(files.map(async (file) => {
-                const content = await fs_extra_1.default.readFile(file, 'utf-8');
+                const content = await fs.readFile(file, 'utf-8');
                 return `// File: ${file}\n${content}\n`;
             }));
             return contents.join('\n');
         }
         else {
-            return await fs_extra_1.default.readFile(filePath, 'utf-8');
+            return await fs.readFile(filePath, 'utf-8');
         }
     }
     async getCodeFiles(dirPath) {
         const files = [];
-        const entries = await fs_extra_1.default.readdir(dirPath);
+        const entries = await fs.readdir(dirPath);
         for (const entry of entries) {
-            const fullPath = path_1.default.join(dirPath, entry);
-            const stats = await fs_extra_1.default.stat(fullPath);
+            const fullPath = path.join(dirPath, entry);
+            const stats = await fs.stat(fullPath);
             if (stats.isDirectory() && !entry.startsWith('.') && entry !== 'node_modules') {
                 const subFiles = await this.getCodeFiles(fullPath);
                 files.push(...subFiles);
@@ -76,33 +70,33 @@ class SpecWriterAgent {
         };
     }
     async findProjectRoot(filePath) {
-        let current = path_1.default.isAbsolute(filePath) ? path_1.default.dirname(filePath) : process.cwd();
-        while (current !== path_1.default.dirname(current)) {
-            const packageJson = path_1.default.join(current, 'package.json');
-            const gitDir = path_1.default.join(current, '.git');
-            if (await fs_extra_1.default.pathExists(packageJson) || await fs_extra_1.default.pathExists(gitDir)) {
+        let current = path.isAbsolute(filePath) ? path.dirname(filePath) : process.cwd();
+        while (current !== path.dirname(current)) {
+            const packageJson = path.join(current, 'package.json');
+            const gitDir = path.join(current, '.git');
+            if (await fs.pathExists(packageJson) || await fs.pathExists(gitDir)) {
                 return current;
             }
-            current = path_1.default.dirname(current);
+            current = path.dirname(current);
         }
         return process.cwd();
     }
     async detectLanguage(rootPath) {
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'tsconfig.json')))
+        if (await fs.pathExists(path.join(rootPath, 'tsconfig.json')))
             return 'typescript';
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'package.json')))
+        if (await fs.pathExists(path.join(rootPath, 'package.json')))
             return 'javascript';
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'requirements.txt')))
+        if (await fs.pathExists(path.join(rootPath, 'requirements.txt')))
             return 'python';
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'Cargo.toml')))
+        if (await fs.pathExists(path.join(rootPath, 'Cargo.toml')))
             return 'rust';
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'go.mod')))
+        if (await fs.pathExists(path.join(rootPath, 'go.mod')))
             return 'go';
         return undefined;
     }
     async detectFramework(rootPath) {
         try {
-            const packageJson = await fs_extra_1.default.readJson(path_1.default.join(rootPath, 'package.json'));
+            const packageJson = await fs.readJson(path.join(rootPath, 'package.json'));
             const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
             if (dependencies.react)
                 return 'react';
@@ -125,9 +119,9 @@ class SpecWriterAgent {
         return undefined;
     }
     async detectPackageManager(rootPath) {
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'pnpm-lock.yaml')))
+        if (await fs.pathExists(path.join(rootPath, 'pnpm-lock.yaml')))
             return 'pnpm';
-        if (await fs_extra_1.default.pathExists(path_1.default.join(rootPath, 'yarn.lock')))
+        if (await fs.pathExists(path.join(rootPath, 'yarn.lock')))
             return 'yarn';
         return 'npm';
     }
@@ -212,10 +206,9 @@ Provide a comprehensive, professional specification document.
         }
     }
     getDefaultOutputPath(inputPath, type) {
-        const baseName = path_1.default.basename(inputPath, path_1.default.extname(inputPath));
+        const baseName = path.basename(inputPath, path.extname(inputPath));
         const timestamp = new Date().toISOString().split('T')[0];
-        return path_1.default.join(process.cwd(), 'specs', `${baseName}-${type}-spec-${timestamp}.md`);
+        return path.join(process.cwd(), 'specs', `${baseName}-${type}-spec-${timestamp}.md`);
     }
 }
-exports.SpecWriterAgent = SpecWriterAgent;
 //# sourceMappingURL=spec-writer.js.map

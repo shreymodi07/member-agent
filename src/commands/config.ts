@@ -1,8 +1,8 @@
-import { BaseCommand } from './base';
-import { BaseCommandOptions } from '../types';
+import { BaseCommand } from './base.js';
+import { BaseCommandOptions } from '../types/index.js';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { ConfigManager } from '../config/manager';
+import { ConfigManager } from '../config/manager.js';
 
 interface ConfigOptions extends BaseCommandOptions {
   get?: string;

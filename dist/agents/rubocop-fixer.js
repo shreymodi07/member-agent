@@ -1,17 +1,11 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.RubocopFixerAgent = void 0;
-const ai_provider_1 = require("../providers/ai-provider");
-const fs_extra_1 = __importDefault(require("fs-extra"));
-const path_1 = __importDefault(require("path"));
-const child_process_1 = require("child_process");
-class RubocopFixerAgent {
+import { AIProvider } from '../providers/ai-provider.js';
+import fs from 'fs-extra';
+import path from 'path';
+import { execSync } from 'child_process';
+export class RubocopFixerAgent {
     constructor(config) {
         this.firstCommit = true;
-        this.aiProvider = new ai_provider_1.AIProvider(config);
+        this.aiProvider = new AIProvider(config);
     }
     async fixRubocop(options) {
         const { projectPath, maxIterations = 10, diffOnly = false, staged = false, rubyRoot, preview = false } = options;
@@ -57,7 +51,7 @@ class RubocopFixerAgent {
             let issues = this.parseIssues(checkOutput);
             if (changedMap) {
                 issues = issues.filter(issue => {
-                    const key = path_1.default.normalize(issue.file);
+                    const key = path.normalize(issue.file);
                     const lineSet = changedMap.get(key);
                     return lineSet ? lineSet.has(issue.line) : false;
                 });
@@ -107,7 +101,7 @@ class RubocopFixerAgent {
     }
     async runRubyGardenerCheck(projectPath) {
         try {
-            const output = (0, child_process_1.execSync)(`cd ${projectPath} && bundle exec ruby_gardener check`, { encoding: 'utf-8' });
+            const output = execSync(`cd ${projectPath} && bundle exec ruby_gardener check`, { encoding: 'utf-8' });
             return output;
         }
         catch (error) {
@@ -119,20 +113,20 @@ class RubocopFixerAgent {
         try {
             const rubyFiles = Array.from(changedMap.keys())
                 .filter(f => f.endsWith('.rb'))
-                .map(rel => ({ rel, abs: path_1.default.join(projectPath, rel) }));
+                .map(rel => ({ rel, abs: path.join(projectPath, rel) }));
             if (rubyFiles.length === 0) {
                 console.log('No Ruby files in diff to run rubocop on.');
                 return;
             }
             const groups = new Map(); // key: ruby root
             for (const file of rubyFiles) {
-                let rubyRoot = this.findRubyRoot(path_1.default.dirname(file.abs));
+                let rubyRoot = this.findRubyRoot(path.dirname(file.abs));
                 if (!rubyRoot) {
                     // If no Gemfile upwards, skip but warn once per file
                     console.warn(`Skipping ${file.rel}: no Gemfile found in its ancestor directories.`);
                     continue;
                 }
-                const relFromRoot = path_1.default.relative(rubyRoot, file.abs);
+                const relFromRoot = path.relative(rubyRoot, file.abs);
                 const diffLines = changedMap.get(file.rel) || new Set();
                 const list = groups.get(rubyRoot) || [];
                 list.push({ relFromRoot, abs: file.abs, relOriginal: file.rel, diffLines });
@@ -167,7 +161,7 @@ class RubocopFixerAgent {
             for (const [root, files] of groups.entries()) {
                 // Bundler install check
                 try {
-                    (0, child_process_1.execSync)(`cd ${root} && bundle check`, { stdio: 'ignore' });
+                    execSync(`cd ${root} && bundle check`, { stdio: 'ignore' });
                 }
                 catch {
                     console.warn(`⚠ Dependencies not installed for root ${root}. Run: (cd ${root} && bundle install)`);
@@ -175,13 +169,13 @@ class RubocopFixerAgent {
                 console.log(`➡ Running RuboCop in root: ${root} (${files.length} file(s))`);
                 // Capture original contents
                 for (const info of files) {
-                    if (await fs_extra_1.default.pathExists(info.abs)) {
-                        info.originalContent = (await fs_extra_1.default.readFile(info.abs, 'utf-8')).split('\n');
+                    if (await fs.pathExists(info.abs)) {
+                        info.originalContent = (await fs.readFile(info.abs, 'utf-8')).split('\n');
                     }
                 }
                 const fileArgs = files.map(f => '"' + f.relFromRoot + '"').join(' ');
                 try {
-                    (0, child_process_1.execSync)(`cd ${root} && bundle exec rubocop -A ${fileArgs}`, { stdio: 'inherit' });
+                    execSync(`cd ${root} && bundle exec rubocop -A ${fileArgs}`, { stdio: 'inherit' });
                 }
                 catch (e) {
                     console.log('RuboCop finished with non-zero exit code in root', root);
@@ -190,9 +184,9 @@ class RubocopFixerAgent {
                 for (const info of files) {
                     if (!info.originalContent)
                         continue;
-                    if (!await fs_extra_1.default.pathExists(info.abs))
+                    if (!await fs.pathExists(info.abs))
                         continue;
-                    const newContent = (await fs_extra_1.default.readFile(info.abs, 'utf-8')).split('\n');
+                    const newContent = (await fs.readFile(info.abs, 'utf-8')).split('\n');
                     const orig = info.originalContent;
                     // Restore lines not in diff set
                     for (let i = 0; i < Math.max(orig.length, newContent.length); i++) {
@@ -202,13 +196,13 @@ class RubocopFixerAgent {
                                 newContent[i] = orig[i];
                         }
                     }
-                    await fs_extra_1.default.writeFile(info.abs, newContent.join('\n'));
+                    await fs.writeFile(info.abs, newContent.join('\n'));
                 }
                 // After merging, run rubocop in check mode to report remaining offenses for these files
                 try {
                     console.log(`Running RuboCop check in ${root} to verify remaining offenses...`);
                     const checkCmd = `cd ${root} && bundle exec rubocop ${fileArgs}`;
-                    const checkOutput = (0, child_process_1.execSync)(checkCmd, { encoding: 'utf-8' });
+                    const checkOutput = execSync(checkCmd, { encoding: 'utf-8' });
                     // If rubocop exits 0, no offenses
                     console.log(`✅ RuboCop check passed for root ${root} (no offenses for selected files).`);
                 }
@@ -227,13 +221,13 @@ class RubocopFixerAgent {
     }
     findRubyRoot(startPath) {
         // Walk upwards until Gemfile found or filesystem root reached
-        let current = path_1.default.resolve(startPath);
+        let current = path.resolve(startPath);
         try {
             while (true) {
-                const gemfile = path_1.default.join(current, 'Gemfile');
-                if (fs_extra_1.default.existsSync(gemfile))
+                const gemfile = path.join(current, 'Gemfile');
+                if (fs.existsSync(gemfile))
                     return current;
-                const parent = path_1.default.dirname(current);
+                const parent = path.dirname(current);
                 if (parent === current)
                     break;
                 current = parent;
@@ -251,7 +245,7 @@ class RubocopFixerAgent {
             const cmd = staged
                 ? `cd ${projectPath} && git diff --cached -U0`
                 : `cd ${projectPath} && git diff HEAD -U0`;
-            const diff = (0, child_process_1.execSync)(cmd, { encoding: 'utf-8' });
+            const diff = execSync(cmd, { encoding: 'utf-8' });
             const files = [];
             let currentFile = null;
             const fileHeaderRegex = /^\+\+\+ b\/(.+)$/;
@@ -332,10 +326,10 @@ class RubocopFixerAgent {
         return significantRules.includes(rule);
     }
     async fixIssue(issue, projectPath) {
-        const filePath = path_1.default.join(projectPath, issue.file);
-        if (!await fs_extra_1.default.pathExists(filePath))
+        const filePath = path.join(projectPath, issue.file);
+        if (!await fs.pathExists(filePath))
             return false;
-        const content = await fs_extra_1.default.readFile(filePath, 'utf-8');
+        const content = await fs.readFile(filePath, 'utf-8');
         const lines = content.split('\n');
         const contextStart = Math.max(0, issue.line - 3);
         const contextEnd = Math.min(lines.length, issue.line + 2);
@@ -358,7 +352,7 @@ Please provide ONLY the corrected version of the problematic line(s). Do not inc
                 // Replace the problematic line with the suggestion
                 const fixedLines = suggestion.trim().split('\n');
                 lines.splice(issue.line - 1, 1, ...fixedLines);
-                await fs_extra_1.default.writeFile(filePath, lines.join('\n'));
+                await fs.writeFile(filePath, lines.join('\n'));
                 return true;
             }
         }
@@ -368,10 +362,10 @@ Please provide ONLY the corrected version of the problematic line(s). Do not inc
         return false;
     }
     async disableRule(issue, projectPath) {
-        const filePath = path_1.default.join(projectPath, issue.file);
-        if (!await fs_extra_1.default.pathExists(filePath))
+        const filePath = path.join(projectPath, issue.file);
+        if (!await fs.pathExists(filePath))
             return;
-        const content = await fs_extra_1.default.readFile(filePath, 'utf-8');
+        const content = await fs.readFile(filePath, 'utf-8');
         const lines = content.split('\n');
         const lineIndex = issue.line - 1;
         // Add disable comment above the line
@@ -382,17 +376,17 @@ Please provide ONLY the corrected version of the problematic line(s). Do not inc
         else if (lineIndex === 0) {
             lines.unshift(disableComment);
         }
-        await fs_extra_1.default.writeFile(filePath, lines.join('\n'));
+        await fs.writeFile(filePath, lines.join('\n'));
     }
     async commitChanges(projectPath, iteration) {
         try {
-            (0, child_process_1.execSync)(`cd ${projectPath} && git add .`, { stdio: 'inherit' });
+            execSync(`cd ${projectPath} && git add .`, { stdio: 'inherit' });
             if (this.firstCommit) {
-                (0, child_process_1.execSync)(`cd ${projectPath} && git commit -m "ruby_gardener" --allow-empty`, { stdio: 'inherit' });
+                execSync(`cd ${projectPath} && git commit -m "ruby_gardener" --allow-empty`, { stdio: 'inherit' });
                 this.firstCommit = false;
             }
             else {
-                (0, child_process_1.execSync)(`cd ${projectPath} && git commit --amend --no-edit --allow-empty`, { stdio: 'inherit' });
+                execSync(`cd ${projectPath} && git commit --amend --no-edit --allow-empty`, { stdio: 'inherit' });
             }
         }
         catch (error) {
@@ -403,5 +397,4 @@ Please provide ONLY the corrected version of the problematic line(s). Do not inc
         return `Completed in ${iterations} iterations. Fixed ${fixes} issues, disabled ${disables} rules: ${rules.join(', ')}`;
     }
 }
-exports.RubocopFixerAgent = RubocopFixerAgent;
 //# sourceMappingURL=rubocop-fixer.js.map
